@@ -9,7 +9,7 @@ const AdminLayout = () => {
       await logoutUser();
       navigate("/login");
     } catch (error) {
-      alert("Error logging out");
+      alert("Lỗi khi đăng xuất");
     }
   };
 
@@ -17,34 +17,33 @@ const AdminLayout = () => {
     <div style={{ display: "flex", minHeight: "100vh" }}>
       {/* Sidebar */}
       <aside style={{ width: "250px", backgroundColor: "#2c3e50", color: "white", padding: "20px", display: "flex", flexDirection: "column" }}>
-        <h3>Admin Dashboard</h3>
+        <h3>Bảng Quản Trị</h3>
         <ul style={{ listStyle: "none", padding: 0, flex: 1 }}>
-          <li style={{ybMm: "15px 0" }}>
-            <Link to="/admin" style={{ color: "white", textDecoration: "none" }}>Home</Link>
-          </li>
           <li style={{ margin: "15px 0" }}>
-            <Link to="/admin/questions" style={{ color: "white", textDecoration: "none" }}>Pool Management</Link>
+            <Link to="/admin" style={{ color: "white", textDecoration: "none" }}>Trang Chủ</Link>
           </li>
           <li style={{ybMm: "15px 0" }}>
-            <Link to="/admin/tests" style={{ color: "white", textDecoration: "none" }}>Test Management</Link>
+            <Link to="/admin/questions" style={{ color: "white", textDecoration: "none" }}>Quản Lý Ngân Hàng Câu Hỏi</Link>
+          </li>
+          <li style={{ybMm: "15px 0" }}>
+            <Link to="/admin/tests" style={{ color: "white", textDecoration: "none" }}>Quản Lý Bài Kiểm Tra</Link>
           </li>
           <li style={{ margin: "15px 0" }}>
-            <Link to="/admin/tags" style={{ color: "white", textDecoration: "none" }}>Tags Management</Link>
+            <Link to="/admin/tags" style={{ color: "white", textDecoration: "none" }}>Quản Lý Thẻ (Tags)</Link>
           </li>
           <hr style={{ borderColor: "#4b6cb7", margin: "15px 0" }} />
           <li style={{ margin: "15px 0" }}>
             {/* New Profile Link */}
-            <Link to="/admin/profile" style={{ color: "#fff", textDecoration: "underline" }}>My Profile</Link>
+            <Link to="/admin/profile" style={{ color: "#fff", textDecoration: "underline" }}>Hồ Sơ Của Tôi</Link>
           </li>
         </ul>
 
-        {/* Logout Button at bottom of sidebar */}
         <button 
           onClick={handleLogout} 
           className="btn btn-danger" 
           style={{ width: "100%", marginTop: "auto" }}
         >
-          Logout
+          Đăng Xuất
         </button>
       </aside>
 

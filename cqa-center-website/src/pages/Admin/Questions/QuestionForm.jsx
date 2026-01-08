@@ -61,7 +61,7 @@ const QuestionForm = () => {
   };
 
   const handleTypeChange = (newType) => {
-    if(confirm("Changing type will reset answers. Continue?")) {
+    if(confirm("Thay đổi loại câu hỏi sẽ đặt lại các câu trả lời. Tiếp tục?")) {
       setFormData({ ...formData, type: newType });
       if (newType === "WRITING") {
         setAnswers([{ name: "", description: "", imageUrl: "", isCorrect: true }]);
@@ -87,7 +87,7 @@ const QuestionForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (answers.length === 0) return alert("Add at least one answer.");
+    if (answers.length === 0) return alert("Vui lòng thêm ít nhất một câu trả lời.");
 
     const payload = { 
       ...formData, 
@@ -100,10 +100,10 @@ const QuestionForm = () => {
 
     if (isEditMode) {
       await updateQuestion(id, payload);
-      alert("Question Updated!");
+      alert("Đã cập nhật câu hỏi!");
     } else {
       await addQuestion(payload);
-      alert("Question Created!");
+      alert("Đã tạo câu hỏi!");
     }
     
     navigate(-1); // Go back to previous page
@@ -111,19 +111,19 @@ const QuestionForm = () => {
 
   return (
     <div className="admin-container">
-      <h2>{isEditMode ? "Edit Question" : "Create Question"}</h2>
+      <h2>{isEditMode ? "Chỉnh Sửa Câu Hỏi" : "Tạo Câu Hỏi Mới"}</h2>
       <form onSubmit={handleSubmit} className="form-column">
         
         <div className="form-group">
-          <label>Question Prompt / Name</label>
+          <label>Nội dung câu hỏi / Tên</label>
           <input className="form-input" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
         </div>
 
         {/* POOL SELECTION */}
         <div className="form-group">
-          <label>Pool / Folder</label>
+          <label>Ngân hàng / Thư mục</label>
           <select className="form-select" value={formData.poolId} onChange={e => setFormData({...formData, poolId: e.target.value})}>
-            <option value="">-- Uncategorized --</option>
+            <option value="">-- Chưa phân loại --</option>
             {availablePools.map(pool => (
               <option key={pool.id} value={pool.id}>{pool.name}</option>
             ))}
@@ -131,21 +131,21 @@ const QuestionForm = () => {
         </div>
 
         <div className="form-group">
-          <label>Question Type</label>
+          <label>Loại câu hỏi</label>
           <select className="form-select" value={formData.type} onChange={e => handleTypeChange(e.target.value)}>
-            <option value="MC_SINGLE">Multiple Choice (Single Answer)</option>
-            <option value="MC_MULTI">Multiple Choice (Multi Answer)</option>
-            <option value="MATCHING">Matching (Pairs)</option>
-            <option value="WRITING">Writing (Fill in the Blank)</option>
+            <option value="MC_SINGLE">Trắc nghiệm (1 đáp án)</option>
+            <option value="MC_MULTI">Trắc nghiệm (Nhiều đáp án)</option>
+            <option value="MATCHING">Nối cặp (Matching)</option>
+            <option value="WRITING">Tự luận (Điền từ)</option>
           </select>
         </div>
 
-        <textarea className="form-textarea" placeholder="Description" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
-        <textarea className="form-textarea" placeholder="Explanation" value={formData.explanation} onChange={e => setFormData({...formData, explanation: e.target.value})} />
-        <input className="form-input" placeholder="Image URL" value={formData.imageUrl} onChange={e => setFormData({...formData, imageUrl: e.target.value})} />
+        <textarea className="form-textarea" placeholder="Mô tả" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+        <textarea className="form-textarea" placeholder="Giải thích đáp án" value={formData.explanation} onChange={e => setFormData({...formData, explanation: e.target.value})} />
+        <input className="form-input" placeholder="URL Hình ảnh" value={formData.imageUrl} onChange={e => setFormData({...formData, imageUrl: e.target.value})} />
 
         <div className="section-box">
-          <p className="section-title">Tags:</p>
+          <p className="section-title">Thẻ (Tags):</p>
           <div className="tag-list">
             {availableTags.map(tag => (
               <label key={tag.id} className="tag-chip">
@@ -161,50 +161,50 @@ const QuestionForm = () => {
         {/* DYNAMIC ANSWERS (Reuse logic from previous, but with value binding) */}
         {(formData.type === "MC_SINGLE" || formData.type === "MC_MULTI") && (
           <div>
-            <h3>Answers</h3>
+            <h3>Các lựa chọn trả lời</h3>
             {answers.map((ans, index) => (
               <div key={index} className="section-box" style={{ borderStyle: 'dashed' }}>
                 <div className="form-row" style={{ alignItems: 'center' }}>
-                  <input className="form-input" placeholder="Option Text" value={ans.name} onChange={e => handleAnswerChange(index, 'name', e.target.value)} required />
+                  <input className="form-input" placeholder="Nội dung lựa chọn" value={ans.name} onChange={e => handleAnswerChange(index, 'name', e.target.value)} required />
                   <label style={{ whiteSpace: 'nowrap', marginLeft: '10px' }}>
-                    Correct? 
+                    Đúng? 
                     <input type="checkbox" style={{ marginLeft: '5px' }} checked={ans.isCorrect} onChange={e => handleAnswerChange(index, 'isCorrect', e.target.checked)} />
                   </label>
                   <button type="button" onClick={() => handleRemoveOption(index)} className="btn btn-danger" style={{ marginLeft: "10px" }}>X</button>
                 </div>
               </div>
             ))}
-            <button type="button" onClick={handleAddOption} className="btn">+ Add Option</button>
+            <button type="button" onClick={handleAddOption} className="btn">+ Thêm lựa chọn</button>
           </div>
         )}
 
         {formData.type === "MATCHING" && (
            <div>
-             <h3>Matching Pairs</h3>
+             <h3>Các cặp nối</h3>
              {answers.map((ans, index) => (
                <div key={index} className="section-box" style={{ borderStyle: 'dashed' }}>
                  <div className="form-row" style={{ alignItems: 'center', gap: "10px" }}>
-                   <input className="form-input" placeholder="Left Side" value={ans.name} onChange={e => handleAnswerChange(index, 'name', e.target.value)} required />
+                   <input className="form-input" placeholder="Vế Trái" value={ans.name} onChange={e => handleAnswerChange(index, 'name', e.target.value)} required />
                    <span>→</span>
-                   <input className="form-input" placeholder="Right Side" value={ans.description} onChange={e => handleAnswerChange(index, 'description', e.target.value)} required />
+                   <input className="form-input" placeholder="Vế Phải" value={ans.description} onChange={e => handleAnswerChange(index, 'description', e.target.value)} required />
                    <button type="button" onClick={() => handleRemoveOption(index)} className="btn btn-danger">X</button>
                  </div>
                </div>
              ))}
-             <button type="button" onClick={handleAddOption} className="btn">+ Add Pair</button>
+             <button type="button" onClick={handleAddOption} className="btn">+ Thêm cặp</button>
            </div>
         )}
 
         {formData.type === "WRITING" && (
           <div>
-            <h3>Correct Answer</h3>
-            <input className="form-input" placeholder="Answer Key" value={answers[0]?.name || ""} onChange={e => handleAnswerChange(0, 'name', e.target.value)} required />
+            <h3>Đáp án đúng</h3>
+            <input className="form-input" placeholder="Từ khóa đáp án" value={answers[0]?.name || ""} onChange={e => handleAnswerChange(0, 'name', e.target.value)} required />
           </div>
         )}
 
         <div style={{ marginTop: "30px", display: "flex", justifyContent: "flex-end" }}>
           <button type="submit" className="btn btn-primary" style={{ padding: "10px 30px" }}>
-            {isEditMode ? "Update Question" : "Create Question"}
+            {isEditMode ? "Cập Nhật Câu Hỏi" : "Tạo Câu Hỏi"}
           </button>
         </div>
       </form>

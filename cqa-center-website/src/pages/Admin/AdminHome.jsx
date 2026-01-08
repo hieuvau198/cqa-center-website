@@ -1,8 +1,7 @@
 const AdminHome = () => {
   return (
     <div style={{ padding: '20px', backgroundColor: '#f3e5f5' }}>
-      <h1>Admin Control Center</h1>
-      <p>Welcome to the Admin Home Page.</p>
+      <h1>Trang Web Kiểm Soát Quản Trị</h1>
     </div>
   );
 };

@@ -10,10 +10,10 @@ import {
 } from "../../../firebase/firebaseQuery";
 
 const TYPE_LABELS = {
-  "MC_SINGLE": "Single Choice",
-  "MC_MULTI": "Multiple Choice",
-  "MATCHING": "Matching",
-  "WRITING": "Writing"
+  "MC_SINGLE": "Trắc nghiệm (1 đáp án)",
+  "MC_MULTI": "Trắc nghiệm (Nhiều đáp án)",
+  "MATCHING": "Nối cặp",
+  "WRITING": "Tự luận"
 };
 
 const QuestionList = () => {
@@ -23,7 +23,7 @@ const QuestionList = () => {
   const [poolQuestions, setPoolQuestions] = useState([]); // View A Data
   const [allQuestions, setAllQuestions] = useState([]);   // View B Data
   const [tags, setTags] = useState([]);                   // For Filter
-  const [poolName, setPoolName] = useState("All Questions");
+  const [poolName, setPoolName] = useState("Tất Cả Câu Hỏi");
 
   // UI / Filter State
   const [searchTerm, setSearchTerm] = useState("");
@@ -83,7 +83,7 @@ const QuestionList = () => {
   };
 
   const handleDelete = async (id) => {
-    if(confirm("Are you sure you want to delete this question permanently?")) {
+    if(confirm("Bạn có chắc chắn muốn xóa vĩnh viễn câu hỏi này không?")) {
       await deleteQuestion(id);
       setPoolQuestions(poolQuestions.filter(q => q.id !== id));
       setAllQuestions(allQuestions.filter(q => q.id !== id));
@@ -114,11 +114,11 @@ const QuestionList = () => {
       {/* Header */}
       <div className="page-header">
         <div>
-          <small style={{ color: "#888", textTransform: "uppercase" }}>Pool Management</small>
+          <small style={{ color: "#888", textTransform: "uppercase" }}>Quản Lý Ngân Hàng</small>
           <h2>{poolName}</h2>
         </div>
         <Link to="/admin/questions/new">
-          <button className="btn btn-primary">+ Create New Question</button>
+          <button className="btn btn-primary">+ Tạo Câu Hỏi Mới</button>
         </Link>
       </div>
 
@@ -127,7 +127,7 @@ const QuestionList = () => {
         <div className="form-row" style={{ alignItems: "center", marginBottom: "15px" }}>
           <input 
             className="form-input" 
-            placeholder="Search questions..." 
+            placeholder="Tìm kiếm câu hỏi..." 
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             style={{ flex: 1 }}
@@ -135,7 +135,7 @@ const QuestionList = () => {
         </div>
         
         <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
-          <span style={{ fontSize: "0.9rem", fontWeight: "bold" }}>Filter by Tags:</span>
+          <span style={{ fontSize: "0.9rem", fontWeight: "bold" }}>Lọc theo thẻ:</span>
           {tags.map(tag => (
             <button 
               key={tag.id}
@@ -155,7 +155,7 @@ const QuestionList = () => {
           ))}
           {selectedTags.length > 0 && (
             <button onClick={() => setSelectedTags([])} style={{ background: "none", border: "none", textDecoration: "underline", cursor: "pointer", fontSize: "0.8rem" }}>
-              Clear
+              Xóa lọc
             </button>
           )}
         </div>
@@ -168,10 +168,10 @@ const QuestionList = () => {
           {/* --- VIEW A: CURRENT POOL --- */}
           <div className="section-box" style={{ background: "#f0f8ff", border: "2px solid #3498db" }}>
             <h3 style={{ borderBottom: "1px solid #ccc", paddingBottom: "10px", marginTop: 0 }}>
-              View A: Included ({poolQuestions.length})
+              Chế độ xem A: Đã thêm ({poolQuestions.length})
             </h3>
             <div className="list-container" style={{ marginTop: "10px" }}>
-              {poolQuestions.length === 0 ? <p>No questions in this pool yet.</p> : (
+              {poolQuestions.length === 0 ? <p>Chưa có câu hỏi nào trong ngân hàng này.</p> : (
                 poolQuestions.map(q => (
                   <div key={q.id} className="item-card" style={{ padding: "15px", background: "white", marginBottom: "10px" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
@@ -184,7 +184,7 @@ const QuestionList = () => {
                         className="btn btn-danger" 
                         style={{ padding: "5px 10px", fontSize: "0.8rem" }}
                       >
-                        Remove
+                        Gỡ bỏ
                       </button>
                     </div>
                   </div>
@@ -196,7 +196,7 @@ const QuestionList = () => {
           {/* --- VIEW B: ALL QUESTIONS (SELECTOR) --- */}
           <div className="section-box" style={{ background: "#fff" }}>
             <h3 style={{ borderBottom: "1px solid #ccc", paddingBottom: "10px", marginTop: 0 }}>
-              View B: Question Bank
+              Chế độ xem B: Kho câu hỏi
             </h3>
             <div className="list-container" style={{ marginTop: "10px" }}>
               {filteredAllQuestions.map(q => {
@@ -222,7 +222,7 @@ const QuestionList = () => {
                           </span>
                           {q.poolId && q.poolId !== poolId && (
                             <span style={{ fontSize: "0.8em", background: "#fff3cd", padding: "2px 6px", borderRadius: "4px" }}>
-                              In other pool
+                              Ở ngân hàng khác
                             </span>
                           )}
                         </div>
@@ -231,7 +231,7 @@ const QuestionList = () => {
                       <div style={{ display: "flex", gap: "8px" }}>
                         {isInCurrentPool ? (
                           <span style={{ color: "green", fontWeight: "bold", fontSize: "0.9rem", alignSelf: "center" }}>
-                            Added
+                            Đã thêm
                           </span>
                         ) : (
                           <button 
@@ -239,7 +239,7 @@ const QuestionList = () => {
                             className="btn btn-primary"
                             style={{ padding: "5px 15px", fontSize: "0.8rem" }}
                           >
-                            + Add
+                            + Thêm
                           </button>
                         )}
                       </div>
@@ -247,7 +247,7 @@ const QuestionList = () => {
                   </div>
                 );
               })}
-              {filteredAllQuestions.length === 0 && <p>No questions match your filter.</p>}
+              {filteredAllQuestions.length === 0 && <p>Không tìm thấy câu hỏi nào phù hợp.</p>}
             </div>
           </div>
 
@@ -261,9 +261,9 @@ const QuestionList = () => {
                 <h4>{q.name}</h4>
                 <div>
                   <Link to={`/admin/questions/edit/${q.id}`}>
-                    <button className="btn-text">Edit</button>
+                    <button className="btn-text">Sửa</button>
                   </Link>
-                  <button onClick={() => handleDelete(q.id)} className="btn-text-delete">Delete</button>
+                  <button onClick={() => handleDelete(q.id)} className="btn-text-delete">Xóa</button>
                 </div>
               </div>
               <p>{q.description}</p>
