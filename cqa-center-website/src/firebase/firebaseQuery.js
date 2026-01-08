@@ -52,6 +52,23 @@ export const getAllTests = async () => {
   }
 };
 
+// --- FIX: Added missing getTestById function ---
+export const getTestById = async (id) => {
+  try {
+    const docRef = doc(db, "tests", id);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return { ...docSnap.data(), id: docSnap.id };
+    } else {
+      console.error("No such test document!");
+      return null;
+    }
+  } catch (error) {
+    console.error("Error fetching test by id:", error);
+    throw error;
+  }
+};
+
 export const addTest = async (testData) => {
   try {
     return await addDoc(testsRef, testData);

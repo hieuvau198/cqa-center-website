@@ -13,6 +13,10 @@ const AdminLayout = () => {
           <li style={{ margin: "15px 0" }}>
             <Link to="/admin/tests" style={{ color: "white", textDecoration: "none" }}>Test Material Management</Link>
           </li>
+          {/* --- FIX: Added Practice Management Link --- */}
+          <li style={{ margin: "15px 0" }}>
+            <Link to="/admin/tests" style={{ color: "white", textDecoration: "none" }}>Practice Management</Link>
+          </li>
           <li style={{ margin: "15px 0" }}>
             <Link to="/admin/tags" style={{ color: "white", textDecoration: "none" }}>Tags Management</Link>
           </li>
