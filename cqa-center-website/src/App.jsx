@@ -5,10 +5,11 @@ import StaffHome from './pages/Staff/StaffHome';
 import AdminHome from './pages/Admin/AdminHome';
 import Login from './pages/Auth/Login';
 import AdminLayout from './pages/Admin/AdminLayout';
-import TestForm from './pages/Admin/Tests/TestForm';
 import QuestionForm from './pages/Admin/Questions/QuestionForm';
 import QuestionList from './pages/Admin/Questions/QuestionList';
-import TestList from './pages/Admin/Tests/TestList'; // We will create this file in Step 2
+import TestForm from './pages/Admin/Tests/TestForm';
+import TestList from './pages/Admin/Tests/TestList';
+import TagList from './pages/Admin/Tags/TagList';
 
 function App() {
   return (
@@ -40,6 +41,9 @@ function App() {
           {/* Test Management */}
           <Route path="tests" element={<TestList />} />
           <Route path="tests/new" element={<TestForm />} />
+
+          {/* Tags Management */}
+          <Route path="tags" element={<TagList />} />
         </Route>
       </Routes>
     </BrowserRouter>
