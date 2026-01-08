@@ -13,11 +13,13 @@ import QuestionForm from "./pages/Admin/Questions/QuestionForm";
 import TagList from "./pages/Admin/Tags/TagList";
 import TestList from "./pages/Admin/Tests/TestList";
 import TestForm from "./pages/Admin/Tests/TestForm";
-import PracticeManager from "./pages/Admin/Practices/PracticeManager"; 
+import PracticeManager from "./pages/Admin/Practices/PracticeManager";
+import AdminProfile from "./pages/Admin/AdminProfile";   
+import PoolList from "./pages/Admin/Questions/PoolList";
 
 // Student Pages
 import StudentHome from "./pages/Student/StudentHome";
-import PracticeAttempt from "./pages/Student/PracticeAttempt"; // <--- Import New Component
+import PracticeAttempt from "./pages/Student/Practice/PracticeAttempt"; // <--- Import New Component
 
 const TeacherHome = () => <div>Teacher Dashboard (Coming Soon)</div>;
 
@@ -31,13 +33,17 @@ function App() {
 
         {/* Admin Routes */}
         <Route path="/admin" element={<AdminLayout />}>
-          <Route index element={<AdminHome />} />
-          <Route path="questions" element={<QuestionList />} />
+          <Route path="questions" element={<PoolList />} /> 
+          <Route path="questions/all" element={<QuestionList />} /> 
+          <Route path="questions/pool/:poolId" element={<QuestionList />} /> 
           <Route path="questions/new" element={<QuestionForm />} />
+          <Route path="questions/edit/:id" element={<QuestionForm />} /> 
           <Route path="tags" element={<TagList />} />
           <Route path="tests" element={<TestList />} />
           <Route path="tests/new" element={<TestForm />} />
+          <Route path="tests/edit/:id" element={<TestForm />} /> 
           <Route path="practices/:testId" element={<PracticeManager />} />
+          <Route path="profile" element={<AdminProfile />} />
         </Route>
 
         {/* Student Routes */}

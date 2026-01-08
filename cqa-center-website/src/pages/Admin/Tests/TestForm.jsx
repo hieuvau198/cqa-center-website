@@ -1,9 +1,12 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { addTest, getAllQuestions, getAllTags } from "../../../firebase/firebaseQuery";
+import { useNavigate, useParams } from "react-router-dom"; // Import useParams
+import { addTest, updateTest, getTestById, getAllQuestions, getAllTags } from "../../../firebase/firebaseQuery";
 
 const TestForm = () => {
   const navigate = useNavigate();
+  const { id } = useParams(); // Get ID from URL if editing
+  const isEditMode = !!id;
+
   const [formData, setFormData] = useState({
     name: "", description: "", maxScore: 100, timeLimit: 60, imageUrl: ""
   });
@@ -15,11 +18,29 @@ const TestForm = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      setAvailableQuestions(await getAllQuestions());
+      // 1. Load common data
+      const questions = await getAllQuestions();
+      setAvailableQuestions(questions);
       setAvailableTags(await getAllTags());
+
+      // 2. If Edit Mode, load Test Data
+      if (isEditMode) {
+        const testData = await getTestById(id);
+        if (testData) {
+          setFormData({
+            name: testData.name,
+            description: testData.description,
+            maxScore: testData.maxScore,
+            timeLimit: testData.timeLimit,
+            imageUrl: testData.imageUrl || ""
+          });
+          setSelectedTagIds(testData.tagIds || []);
+          setSelectedQuestionIds(testData.questionIds || []);
+        }
+      }
     };
     fetchData();
-  }, []);
+  }, [id, isEditMode]);
 
   const handleToggleQuestion = (id) => {
     selectedQuestionIds.includes(id) 
@@ -35,18 +56,32 @@ const TestForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const payload = { ...formData, tagIds: selectedTagIds, questionIds: selectedQuestionIds };
+    
     try {
-      await addTest({ ...formData, tagIds: selectedTagIds, questionIds: selectedQuestionIds });
-      alert("Test Created Successfully!");
+      if (isEditMode) {
+        await updateTest(id, payload);
+        alert("Test Updated Successfully!");
+      } else {
+        await addTest(payload);
+        alert("Test Created Successfully!");
+      }
       navigate("/admin/tests");
     } catch (error) {
-      alert("Failed to create test.");
+      alert("Failed to save test.");
     }
+  };
+
+  const handleEditQuestion = (e, qId) => {
+    e.stopPropagation(); // Prevent toggling the checkbox
+    e.preventDefault();
+    // Open in new tab so user doesn't lose form state
+    window.open(`/admin/questions/edit/${qId}`, '_blank');
   };
 
   return (
     <div className="admin-container">
-      <h2>Create Test Material</h2>
+      <h2>{isEditMode ? "Edit Test" : "Create Test"}</h2>
       <form onSubmit={handleSubmit} className="form-column">
         <input className="form-input" placeholder="Test Name" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
         <textarea className="form-textarea" placeholder="Description" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
@@ -77,18 +112,29 @@ const TestForm = () => {
         </div>
 
         <h3>Select Questions for this Test</h3>
+        <p style={{fontSize: '0.8rem', color: '#666'}}>Tip: Click "Edit" to modify the original question in a new tab.</p>
         <div className="scroll-box">
           {availableQuestions.map(q => (
-            <div key={q.id} className="checkbox-item">
-              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", width: '100%' }}>
+            <div key={q.id} className="checkbox-item" style={{justifyContent: 'space-between'}}>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", flex: 1 }}>
                 <input type="checkbox" checked={selectedQuestionIds.includes(q.id)} onChange={() => handleToggleQuestion(q.id)} />
                 <span><strong>{q.name}</strong> <small>({q.type})</small></span>
               </label>
+              
+              <button 
+                onClick={(e) => handleEditQuestion(e, q.id)}
+                className="btn" 
+                style={{padding: '2px 8px', fontSize: '10px', height: 'fit-content'}}
+              >
+                Edit Origin
+              </button>
             </div>
           ))}
         </div>
 
-        <button type="submit" className="btn btn-blue" style={{ marginTop: "10px" }}>Save Test</button>
+        <button type="submit" className="btn btn-blue" style={{ marginTop: "10px" }}>
+            {isEditMode ? "Update Test" : "Save Test"}
+        </button>
       </form>
     </div>
   );

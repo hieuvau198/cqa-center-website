@@ -1,6 +1,6 @@
 // src/firebase/firebaseQuery.js
 import { db, auth, googleProvider } from "./firebase-config";
-import { collection, getDocs, addDoc, deleteDoc, doc, setDoc, getDoc, query, where } from "firebase/firestore";
+import { collection, getDocs, addDoc, deleteDoc, doc, setDoc, updateDoc, getDoc, query, where } from "firebase/firestore";
 import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
 
 // --- FIX: Export these so components can import them from this file ---
@@ -8,11 +8,33 @@ export { db, auth, googleProvider };
 
 //#region Path References
 const questionsRef = collection(db, "questions");
+const poolsRef = collection(db, "pools");
 const testsRef = collection(db, "tests");
 const tagsRef = collection(db, "tags");
 const usersRef = collection(db, "users");
 const attemptsRef = collection(db, "attempts");
 const practicesRef = collection(db, "practices");
+//#endregion
+
+//#region POOLS
+export const getAllPools = async () => {
+  try {
+    const snapshot = await getDocs(poolsRef);
+    return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+  } catch (error) {
+    console.error("Error fetching pools:", error);
+    throw error;
+  }
+};
+
+export const addPool = async (name) => {
+  try {
+    return await addDoc(poolsRef, { name, createdAt: new Date().toISOString() });
+  } catch (error) {
+    console.error("Error adding pool:", error);
+    throw error;
+  }
+};
 //#endregion
 
 //#region QUESTIONs
@@ -26,7 +48,17 @@ export const getAllQuestions = async () => {
   }
 };
 
-// --- NEW: Required for PracticeAttempt ---
+export const getQuestionsByPool = async (poolId) => {
+  try {
+    const q = query(questionsRef, where("poolId", "==", poolId));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+  } catch (error) {
+    console.error("Error fetching questions by pool:", error);
+    throw error;
+  }
+};
+
 export const getQuestionsByIds = async (ids) => {
   try {
     if (!ids || ids.length === 0) return [];
@@ -50,11 +82,33 @@ export const addQuestion = async (questionData) => {
   }
 };
 
+export const updateQuestion = async (id, data) => {
+  try {
+    const docRef = doc(db, "questions", id);
+    await updateDoc(docRef, data);
+  } catch (error) {
+    console.error("Error updating question:", error);
+    throw error;
+  }
+};
+
 export const deleteQuestion = async (id) => {
   try {
     await deleteDoc(doc(db, "questions", id));
   } catch (error) {
     console.error("Error deleting question:", error);
+    throw error;
+  }
+};
+
+export const getQuestionById = async (id) => {
+  try {
+    const docRef = doc(db, "questions", id);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) return { ...docSnap.data(), id: docSnap.id };
+    return null;
+  } catch (error) {
+    console.error("Error fetching question:", error);
     throw error;
   }
 };
@@ -92,6 +146,16 @@ export const addTest = async (testData) => {
     return await addDoc(testsRef, testData);
   } catch (error) {
     console.error("Error adding test:", error);
+    throw error;
+  }
+};
+
+export const updateTest = async (id, data) => {
+  try {
+    const docRef = doc(db, "tests", id);
+    await updateDoc(docRef, data);
+  } catch (error) {
+    console.error("Error updating test:", error);
     throw error;
   }
 };
@@ -258,6 +322,18 @@ export const getUserProfile = async (uid) => {
     return null;
   } catch (error) {
     console.error("Error fetching user profile:", error);
+    throw error;
+  }
+};
+
+export const updateUserProfile = async (uid, data) => {
+  try {
+    const userRef = doc(db, "users", uid);
+    // setDoc with { merge: true } creates the document if it doesn't exist
+    // or updates specific fields if it does.
+    await setDoc(userRef, data, { merge: true }); 
+  } catch (error) {
+    console.error("Error updating profile:", error);
     throw error;
   }
 };

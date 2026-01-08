@@ -1,7 +1,6 @@
-// src/pages/Student/StudentHome.jsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAllPractices } from "../../firebase/firebaseQuery";
+import { getAllPractices, logoutUser } from "../../firebase/firebaseQuery"; // Import logoutUser
 
 const StudentHome = () => {
   const [practices, setPractices] = useState([]);
@@ -10,15 +9,17 @@ const StudentHome = () => {
   useEffect(() => {
     const fetchPractices = async () => {
       const data = await getAllPractices();
-      // Filter for active practices if necessary (assuming all fetched are candidates)
-      // You can add logic here to check start/end times vs current time
       setPractices(data);
     };
     fetchPractices();
   }, []);
 
+  const handleLogout = async () => {
+    await logoutUser();
+    navigate("/login");
+  };
+
   const handleAttempt = (practice) => {
-    // If a practice code is required, prompt the user
     if (practice.entryCode) {
       const userCode = prompt("Please enter the practice code to begin:");
       if (!userCode) return;
@@ -28,15 +29,19 @@ const StudentHome = () => {
         return;
       }
     }
-    
-    // If code matches or no code required
     navigate(`/student/attempt/${practice.id}`);
   };
 
   return (
     <div style={{ padding: '20px', backgroundColor: '#e3f2fd', minHeight: '100vh' }}>
-      <h1>Student Portal</h1>
-      <p>Select a practice session below to begin.</p>
+      {/* Header with Logout */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+        <div>
+          <h1 style={{ margin: 0 }}>Student Portal</h1>
+          <p style={{ margin: 0 }}>Select a practice session below to begin.</p>
+        </div>
+        <button onClick={handleLogout} className="btn btn-danger">Logout</button>
+      </div>
       
       <div className="list-container">
         {practices.length === 0 ? <p>No active practices found.</p> : practices.map(p => (

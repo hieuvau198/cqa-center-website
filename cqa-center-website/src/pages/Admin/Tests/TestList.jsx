@@ -34,13 +34,20 @@ const TestList = () => {
             <div className="item-header">
               <h4>{t.name} <small>(Max Score: {t.maxScore})</small></h4>
               <div style={{ display: 'flex', gap: '10px' }}>
-                 {/* Link to Practice Management */}
                 <button 
                   onClick={() => navigate(`/admin/practices/${t.id}`)} 
                   className="btn btn-blue" 
                   style={{ padding: "5px 10px", fontSize: "12px" }}
                 >
-                  View Attempts
+                  Attempts
+                </button>
+                {/* [NEW] Edit Button */}
+                <button 
+                  onClick={() => navigate(`/admin/tests/edit/${t.id}`)} 
+                  className="btn" 
+                  style={{ padding: "5px 10px", fontSize: "12px", background: 'white' }}
+                >
+                  Edit
                 </button>
                 <button onClick={() => handleDelete(t.id)} className="btn-text-delete">Delete</button>
               </div>
