@@ -1,80 +1,96 @@
 import { useState } from "react";
-import { auth, googleProvider } from "../../firebase-config";
-import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import { useNavigate } from "react-router-dom";
+import { loginWithGoogle, loginWithEmail, registerWithEmail, getUserProfile } from "../../firebase/firebaseQuery";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [isSignUp, setIsSignUp] = useState(false); // Toggle between Login and Signup
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [role, setRole] = useState("STUDENT"); // Default role
   const navigate = useNavigate();
 
-  // Handle Google Login
+  const handleRedirect = async (user) => {
+    // Fetch user profile to know where to redirect
+    const profile = await getUserProfile(user.uid);
+    if (profile?.role === "ADMIN") navigate("/admin");
+    else if (profile?.role === "TEACHER") navigate("/teacher");
+    else navigate("/student");
+  };
+
   const handleGoogleLogin = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
-      navigate("/student"); // Default redirect after login
+      const user = await loginWithGoogle();
+      await handleRedirect(user);
     } catch (error) {
-      console.error("Google Login Error:", error);
       alert(error.message);
     }
   };
 
-  // Handle Email/Password
   const handleEmailAuth = async (e) => {
     e.preventDefault();
     try {
       if (isSignUp) {
-        await createUserWithEmailAndPassword(auth, email, password);
-        alert("Account created! Logging you in...");
+        const user = await registerWithEmail(email, password, role);
+        alert("Account created successfully!");
+        await handleRedirect(user);
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        const result = await loginWithEmail(email, password);
+        await handleRedirect(result.user);
       }
-      navigate("/student"); // Default redirect
     } catch (error) {
-      console.error("Auth Error:", error);
       alert(error.message);
     }
   };
 
   return (
-    <div style={{ maxWidth: "400px", margin: "50px auto", padding: "20px", border: "1px solid #ccc", borderRadius: "8px" }}>
-      <h2>{isSignUp ? "Create Account" : "Sign In"}</h2>
+    <div className="auth-container">
+      <h2 style={{ textAlign: "center" }}>{isSignUp ? "Create Account" : "Sign In"}</h2>
       
-      <form onSubmit={handleEmailAuth} style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+      <form onSubmit={handleEmailAuth} className="form-column">
         <input 
+          className="form-input" 
           type="email" 
           placeholder="Email" 
           value={email} 
           onChange={(e) => setEmail(e.target.value)} 
           required 
-          style={{ padding: "8px" }}
         />
         <input 
+          className="form-input" 
           type="password" 
           placeholder="Password" 
           value={password} 
           onChange={(e) => setPassword(e.target.value)} 
           required 
-          style={{ padding: "8px" }}
         />
-        <button type="submit" style={{ padding: "10px", backgroundColor: "#007bff", color: "white", border: "none" }}>
+        
+        {/* Role Selection only visible during Sign Up */}
+        {isSignUp && (
+          <div className="form-group">
+            <label className="form-label">I am a:</label>
+            <select className="form-select" value={role} onChange={(e) => setRole(e.target.value)}>
+              <option value="STUDENT">Student</option>
+              <option value="TEACHER">Teacher</option>
+              {/* Admin usually created manually in DB, but added here for testing */}
+              <option value="ADMIN">Admin</option> 
+            </select>
+          </div>
+        )}
+
+        <button type="submit" className="btn btn-blue">
           {isSignUp ? "Sign Up" : "Login"}
         </button>
       </form>
 
-      <hr />
+      <hr style={{ margin: "20px 0" }} />
 
-      <button onClick={handleGoogleLogin} style={{ width: "100%", padding: "10px", backgroundColor: "#db4437", color: "white", border: "none" }}>
+      <button onClick={handleGoogleLogin} className="btn btn-google">
         Sign in with Google
       </button>
 
-      <p style={{ marginTop: "15px", textAlign: "center" }}>
+      <p className="auth-switch">
         {isSignUp ? "Already have an account? " : "No account yet? "}
-        <span 
-          onClick={() => setIsSignUp(!isSignUp)} 
-          style={{ color: "blue", cursor: "pointer", textDecoration: "underline" }}
-        >
+        <span onClick={() => setIsSignUp(!isSignUp)} className="link-text">
           {isSignUp ? "Login here" : "Sign up here"}
         </span>
       </p>

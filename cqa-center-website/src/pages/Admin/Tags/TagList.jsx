@@ -1,67 +1,52 @@
-// src/pages/Admin/Tags/TagList.jsx
 import { useEffect, useState } from "react";
-import { db } from "../../../firebase-config";
-import { collection, getDocs, deleteDoc, doc, addDoc } from "firebase/firestore";
+import { getAllTags, addTag, deleteTag } from "../../../firebase/firebaseQuery";
 
 const TagList = () => {
   const [tags, setTags] = useState([]);
   const [newTagName, setNewTagName] = useState("");
 
   const fetchTags = async () => {
-    const querySnapshot = await getDocs(collection(db, "tags"));
-    setTags(querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })));
+    const data = await getAllTags();
+    setTags(data);
   };
 
-  useEffect(() => {
-    fetchTags();
-  }, []);
+  useEffect(() => { fetchTags(); }, []);
 
   const handleAddTag = async (e) => {
     e.preventDefault();
     if (!newTagName.trim()) return;
-    
-    await addDoc(collection(db, "tags"), { 
-      name: newTagName.trim() 
-    });
-    
+    await addTag(newTagName.trim());
     setNewTagName("");
-    fetchTags(); // Refresh list
+    fetchTags(); 
   };
 
   const handleDelete = async (id) => {
     if(confirm("Delete this tag? Questions using it will lose the reference.")) {
-      await deleteDoc(doc(db, "tags", id));
+      await deleteTag(id);
       setTags(tags.filter(t => t.id !== id));
     }
   };
 
   return (
-    <div style={{ background: "white", padding: "20px" }}>
+    <div className="admin-container">
       <h2>Tags Management</h2>
       
-      {/* Add Tag Form */}
-      <form onSubmit={handleAddTag} style={{ marginBottom: "20px", display: "flex", gap: "10px" }}>
+      <form onSubmit={handleAddTag} className="form-row" style={{ marginBottom: "20px" }}>
         <input 
+          className="form-input"
           value={newTagName} 
           onChange={(e) => setNewTagName(e.target.value)} 
           placeholder="New Tag Name" 
           required 
-          style={{ padding: "8px" }}
         />
-        <button type="submit" style={{ background: "green", color: "white" }}>+ Add Tag</button>
+        <button type="submit" className="btn btn-primary">+ Add Tag</button>
       </form>
 
-      {/* Tags List */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+      <div className="tag-list">
         {tags.map(tag => (
-          <div key={tag.id} style={{ border: "1px solid #ddd", padding: "5px 10px", borderRadius: "15px", display: "flex", alignItems: "center", gap: "10px", background: "#f8f9fa" }}>
+          <div key={tag.id} className="tag-chip">
             <span>{tag.name}</span>
-            <button 
-              onClick={() => handleDelete(tag.id)} 
-              style={{ background: "none", border: "none", color: "red", cursor: "pointer", padding: 0, fontSize: "12px" }}
-            >
-              ✕
-            </button>
+            <button onClick={() => handleDelete(tag.id)} className="tag-chip-delete">✕</button>
           </div>
         ))}
       </div>

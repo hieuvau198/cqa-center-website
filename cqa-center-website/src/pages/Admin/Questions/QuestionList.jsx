@@ -1,36 +1,42 @@
 import { useEffect, useState } from "react";
-import { db } from "../../../firebase-config";
-import { collection, getDocs, deleteDoc, doc } from "firebase/firestore";
 import { Link } from "react-router-dom";
+import { getAllQuestions, deleteQuestion } from "../../../firebase/firebaseQuery";
 
 const QuestionList = () => {
   const [questions, setQuestions] = useState([]);
 
   useEffect(() => {
-    const fetchQuestions = async () => {
-      const querySnapshot = await getDocs(collection(db, "questions"));
-      setQuestions(querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id })));
+    const fetchData = async () => {
+      const data = await getAllQuestions();
+      setQuestions(data);
     };
-    fetchQuestions();
+    fetchData();
   }, []);
 
   const handleDelete = async (id) => {
     if(confirm("Delete this question?")) {
-      await deleteDoc(doc(db, "questions", id));
+      await deleteQuestion(id);
       setQuestions(questions.filter(q => q.id !== id));
     }
   };
 
   return (
-    <div>
-      <h2>Pool Management</h2>
-      <Link to="/admin/questions/new"><button>+ Add New Question</button></Link>
-      <div style={{ marginTop: "20px" }}>
+    <div className="admin-container">
+      <div className="page-header">
+        <h2>Pool Management</h2>
+        <Link to="/admin/questions/new">
+          <button className="btn btn-primary">+ Add New Question</button>
+        </Link>
+      </div>
+
+      <div className="list-container">
         {questions.map(q => (
-          <div key={q.id} style={{ border: "1px solid #ddd", padding: "10px", marginBottom: "10px", background: "white" }}>
-            <h4>{q.name} <small>({q.type})</small></h4>
+          <div key={q.id} className="item-card">
+            <div className="item-header">
+              <h4>{q.name} <small>({q.type})</small></h4>
+              <button onClick={() => handleDelete(q.id)} className="btn-text-delete">Delete</button>
+            </div>
             <p>{q.description}</p>
-            <button onClick={() => handleDelete(q.id)} style={{ color: "red" }}>Delete</button>
           </div>
         ))}
       </div>
