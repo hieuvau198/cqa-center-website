@@ -1,7 +1,10 @@
 // src/firebase/firebaseQuery.js
 import { db, auth, googleProvider } from "./firebase-config";
-import { collection, getDocs, addDoc, deleteDoc, doc, setDoc, getDoc, query, where, orderBy } from "firebase/firestore";
+import { collection, getDocs, addDoc, deleteDoc, doc, setDoc, getDoc, query, where } from "firebase/firestore";
 import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
+
+// --- FIX: Export these so components can import them from this file ---
+export { db, auth, googleProvider }; 
 
 //#region Path References
 const questionsRef = collection(db, "questions");
@@ -9,7 +12,7 @@ const testsRef = collection(db, "tests");
 const tagsRef = collection(db, "tags");
 const usersRef = collection(db, "users");
 const attemptsRef = collection(db, "attempts");
-const practicesRef = collection(db, "practices"); // <--- NEW COLLECTION
+const practicesRef = collection(db, "practices");
 //#endregion
 
 //#region QUESTIONs
@@ -19,6 +22,21 @@ export const getAllQuestions = async () => {
     return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
   } catch (error) {
     console.error("Error fetching questions:", error);
+    throw error;
+  }
+};
+
+// --- NEW: Required for PracticeAttempt ---
+export const getQuestionsByIds = async (ids) => {
+  try {
+    if (!ids || ids.length === 0) return [];
+    const questionPromises = ids.map(id => getDoc(doc(db, "questions", id)));
+    const questionSnapshots = await Promise.all(questionPromises);
+    return questionSnapshots
+      .filter(snap => snap.exists())
+      .map(snap => ({ ...snap.data(), id: snap.id }));
+  } catch (error) {
+    console.error("Error fetching questions by IDs:", error);
     throw error;
   }
 };
@@ -88,16 +106,25 @@ export const deleteTest = async (id) => {
 };
 //#endregion
 
-//#region PRACTICES (NEW FEATURE)
+//#region PRACTICES
 export const createPractice = async (practiceData) => {
   try {
-    // practiceData: { testId, entryCode, startTime, endTime, isActive, createdAt }
     return await addDoc(practicesRef, {
       ...practiceData,
       createdAt: new Date().toISOString()
     });
   } catch (error) {
     console.error("Error creating practice:", error);
+    throw error;
+  }
+};
+
+export const getAllPractices = async () => {
+  try {
+    const snapshot = await getDocs(practicesRef);
+    return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+  } catch (error) {
+    console.error("Error fetching all practices:", error);
     throw error;
   }
 };
@@ -113,7 +140,6 @@ export const getPracticesByTest = async (testId) => {
   }
 };
 
-// Use this for Student Side later to find a test by Code
 export const getPracticeByCode = async (entryCode) => {
   try {
     const q = query(practicesRef, where("entryCode", "==", entryCode));
@@ -124,6 +150,18 @@ export const getPracticeByCode = async (entryCode) => {
     return null;
   } catch (error) {
     console.error("Error finding practice by code:", error);
+    throw error;
+  }
+};
+
+// --- NEW: Required for PracticeAttempt ---
+export const getPracticeById = async (id) => {
+  try {
+    const docSnap = await getDoc(doc(db, "practices", id));
+    if (docSnap.exists()) return { ...docSnap.data(), id: docSnap.id };
+    return null;
+  } catch (error) {
+    console.error("Error fetching practice:", error);
     throw error;
   }
 };
@@ -228,7 +266,6 @@ export const getUserProfile = async (uid) => {
 //#region ATTEMPTs
 export const saveAttempt = async (attemptData) => {
   try {
-    // attemptData now MUST include practiceId alongside testId
     return await addDoc(attemptsRef, {
       ...attemptData,
       timestamp: new Date().toISOString()
@@ -239,7 +276,6 @@ export const saveAttempt = async (attemptData) => {
   }
 };
 
-// Retrieve attempts for a specific PRACTICE SESSION (e.g., Morning Class)
 export const getAttemptsByPractice = async (practiceId) => {
   try {
     const q = query(attemptsRef, where("practiceId", "==", practiceId));
@@ -251,7 +287,6 @@ export const getAttemptsByPractice = async (practiceId) => {
   }
 };
 
-// Fallback: Retrieve all attempts for the base Test
 export const getAttemptsByTest = async (testId) => {
   try {
     const q = query(attemptsRef, where("testId", "==", testId));

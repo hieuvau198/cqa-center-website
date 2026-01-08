@@ -1,103 +1,230 @@
-/* --- Admin & Layout --- */
+/* =========================================
+   1. CORE THEME & TYPOGRAPHY (From jpd123)
+   ========================================= */
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;700&family=Roboto:wght@400;500;700&display=swap');
+
+:root {
+  --primary: #000000;
+  --secondary: #ffffff;
+  --accent: #2d2d2d;
+  --success-bg: #e6f5e6;
+  --error: #d8000c;
+  --border-color: #e5e5e5;
+  --shadow-hard: 4px 4px 0px rgba(0,0,0,1);
+  --shadow-hover: 6px 6px 0px rgba(0,0,0,1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: 'Roboto', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background-color: #f4f4f4; /* Clean background for Admin Dashboard */
+  color: var(--primary);
+  line-height: 1.5;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Oswald', sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 0;
+  color: var(--primary);
+}
+
+/* =========================================
+   2. LAYOUT & CONTAINERS
+   ========================================= */
 .admin-container {
-  background: white;
-  padding: 20px;
-  border-radius: 8px;
+  background: var(--secondary);
+  padding: 30px;
+  border: 1px solid var(--primary); /* Sharp border */
+  box-shadow: 0 4px 0 rgba(0,0,0,0.1); /* Subtle hard shadow */
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 30px;
+  border-bottom: 2px solid var(--primary);
+  padding-bottom: 15px;
 }
 
-/* --- Forms --- */
+.page-header h2 {
+  font-size: 2rem;
+  margin: 0;
+}
+
+/* =========================================
+   3. BUTTONS (Re-styled to match jpd123)
+   ========================================= */
+.btn {
+  font-family: 'Oswald', sans-serif;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 10px 20px;
+  border: 2px solid var(--primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.btn:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow-hard);
+}
+
+/* Primary Action (Black) */
+.btn-primary, .btn-blue {
+  background-color: var(--primary);
+  color: var(--secondary);
+  border-color: var(--primary);
+}
+
+.btn-primary:hover, .btn-blue:hover {
+  background-color: #333;
+}
+
+/* Secondary/Danger Action (White with Red Border) */
+.btn-danger {
+  background-color: var(--secondary);
+  color: var(--error);
+  border-color: var(--error);
+}
+
+.btn-danger:hover {
+  background-color: var(--error);
+  color: white;
+  box-shadow: 4px 4px 0px rgba(216, 0, 12, 0.4);
+}
+
+/* Text only button */
+.btn-text-delete {
+  font-family: 'Oswald', sans-serif;
+  text-transform: uppercase;
+  color: var(--error);
+  background: none;
+  border: none;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 5px;
+}
+.btn-text-delete:hover {
+  text-decoration: underline;
+}
+
+/* =========================================
+   4. FORMS & INPUTS
+   ========================================= */
 .form-column {
   display: flex;
   flex-direction: column;
-  gap: 15px;
+  gap: 20px;
 }
 
 .form-row {
   display: flex;
-  gap: 15px;
+  gap: 20px;
+  flex-wrap: wrap;
 }
 
 .form-group {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 8px;
+  min-width: 200px;
 }
 
 .form-label {
-  font-size: 12px;
-  color: #666;
-  font-weight: bold;
+  font-family: 'Oswald', sans-serif;
+  font-size: 0.85rem;
+  color: var(--primary);
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .form-input, .form-textarea, .form-select {
-  padding: 10px;
+  padding: 12px;
   border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 14px;
+  border-radius: 0; /* Square edges */
+  font-family: 'Roboto', sans-serif;
+  font-size: 1rem;
   width: 100%;
-  box-sizing: border-box; /* Ensures padding doesn't affect width */
+  background: #fdfdfd;
+  transition: border-color 0.2s;
 }
 
-/* --- Buttons --- */
-.btn {
-  padding: 10px 16px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-weight: 600;
-  transition: opacity 0.2s;
+.form-input:focus, .form-textarea:focus, .form-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  border-width: 2px;
+  padding: 11px; /* Adjust for border width change to prevent layout shift */
 }
 
-.btn:hover { opacity: 0.9; }
-
-.btn-primary { background-color: #28a745; color: white; } /* Green */
-.btn-blue { background-color: #007bff; color: white; }    /* Blue */
-.btn-danger { background-color: #dc3545; color: white; }  /* Red */
-.btn-google { background-color: #db4437; color: white; width: 100%; }
-.btn-text-delete { color: red; background: none; border: none; padding: 0; cursor: pointer; }
-
-/* --- Cards & Lists --- */
+/* =========================================
+   5. CARDS & LISTS
+   ========================================= */
 .list-container {
-  margin-top: 20px;
+  margin-top: 25px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 15px;
 }
 
 .item-card {
+  background: var(--secondary);
   border: 1px solid #ddd;
-  padding: 15px;
-  background: white;
-  border-radius: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
+  padding: 20px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.item-card:hover {
+  border-color: var(--primary);
+  transform: translateX(5px); /* Slide right effect */
+  box-shadow: -4px 4px 0px rgba(0,0,0,0.1);
 }
 
 .item-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
 }
 
-/* --- Tags --- */
+.item-header h3, .item-header h4 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+/* =========================================
+   6. TAGS & CHIPS
+   ========================================= */
 .section-box {
-  border: 1px solid #ccc;
-  padding: 15px;
-  border-radius: 6px;
+  background: white;
+  border: 1px solid var(--primary);
+  padding: 20px;
+  margin-bottom: 20px;
 }
 
 .section-title {
-  margin: 0 0 10px 0;
-  font-weight: bold;
+  font-family: 'Oswald', sans-serif;
+  border-bottom: 2px solid #eee;
+  padding-bottom: 5px;
+  margin-bottom: 15px;
 }
 
 .tag-list {
@@ -107,63 +234,88 @@
 }
 
 .tag-chip {
+  font-family: 'Oswald', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: var(--primary);
+  color: var(--secondary);
+  padding: 6px 12px;
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #f8f9fa;
-  padding: 6px 12px;
-  border-radius: 20px;
-  border: 1px solid #ddd;
-  cursor: pointer;
-  user-select: none;
+  border: 1px solid var(--primary);
+  cursor: default;
+  transition: all 0.2s;
+}
+
+.tag-chip:hover {
+  background: var(--secondary);
+  color: var(--primary);
 }
 
 .tag-chip-delete {
   background: none;
   border: none;
-  color: #dc3545;
+  color: inherit; /* Takes parent color */
   cursor: pointer;
   font-weight: bold;
-  font-size: 14px;
-  line-height: 1;
+  font-size: 1.1rem;
+  line-height: 0.5;
+  margin-left: 5px;
 }
 
-/* --- Auth --- */
+/* =========================================
+   7. AUTHENTICATION
+   ========================================= */
 .auth-container {
-  max-width: 400px;
-  margin: 50px auto;
-  padding: 30px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  background: white;
-  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  max-width: 450px;
+  margin: 80px auto;
+  padding: 40px;
+  background: var(--secondary);
+  border: 2px solid var(--primary);
+  box-shadow: var(--shadow-hard);
+  text-align: center;
+}
+
+.auth-container h2 {
+  font-size: 2.5rem;
+  margin-bottom: 30px;
 }
 
 .auth-switch {
-  text-align: center;
-  margin-top: 15px;
+  margin-top: 20px;
+  font-family: 'Oswald', sans-serif;
 }
 
 .link-text {
-  color: #007bff;
-  cursor: pointer;
+  color: var(--primary);
+  font-weight: 700;
   text-decoration: underline;
+  cursor: pointer;
 }
 
-/* --- Scrollable Areas --- */
+/* =========================================
+   8. UTILITIES
+   ========================================= */
 .scroll-box {
   max-height: 300px;
   overflow-y: auto;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  border: 2px solid #eee;
   padding: 10px;
+  background: #fafafa;
 }
 
 .checkbox-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 0;
-  border-bottom: 1px solid #f0f0f0;
+  gap: 12px;
+  padding: 10px;
+  border-bottom: 1px solid #eee;
   cursor: pointer;
+  transition: background 0.1s;
+}
+
+.checkbox-item:hover {
+  background: #f0f0f0;
 }
