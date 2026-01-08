@@ -3,7 +3,11 @@ import StudentHome from './pages/Student/StudentHome';
 import TeacherHome from './pages/Teacher/TeacherHome';
 import StaffHome from './pages/Staff/StaffHome';
 import AdminHome from './pages/Admin/AdminHome';
-import Login from './pages/Auth/Login'; // Import Login
+import Login from './pages/Auth/Login';
+import AdminLayout from './pages/Admin/AdminLayout';
+import TestForm from './pages/Admin/Tests/TestForm';
+import QuestionForm from './pages/Admin/Questions/QuestionForm';
+import QuestionList from './pages/Admin/Questions/QuestionList';
 
 function App() {
   return (
