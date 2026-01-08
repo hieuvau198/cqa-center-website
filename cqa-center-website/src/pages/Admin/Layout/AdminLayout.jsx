@@ -1,5 +1,5 @@
 import { Link, Outlet, useNavigate } from "react-router-dom";
-import { logoutUser } from "../../firebase/firebaseQuery";
+import { logoutUser } from "../../../firebase/firebaseQuery";
 
 const AdminLayout = () => {
   const navigate = useNavigate();

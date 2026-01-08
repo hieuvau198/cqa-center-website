@@ -15,7 +15,7 @@ const TestList = () => {
   }, []);
 
   const handleDelete = async (id) => {
-    if(confirm("Delete this test?")) {
+    if(confirm("Bạn có chắc chắn muốn xóa bài kiểm tra này không?")) {
       await deleteTest(id);
       setTests(tests.filter(t => t.id !== id));
     }
@@ -24,36 +24,35 @@ const TestList = () => {
   return (
     <div className="admin-container">
       <div className="page-header">
-        <h2>Test Material Management</h2>
-        <Link to="/admin/tests/new"><button className="btn btn-primary">+ Create New Test</button></Link>
+        <h2>Quản Lý Bài Kiểm Tra</h2>
+        <Link to="/admin/tests/new">
+          <button className="btn btn-primary">+ Tạo Bài Kiểm Tra Mới</button>
+        </Link>
       </div>
       
       <div className="list-container">
         {tests.map(t => (
           <div key={t.id} className="item-card">
             <div className="item-header">
-              <h4>{t.name} <small>(Max Score: {t.maxScore})</small></h4>
-              <div style={{ display: 'flex', gap: '10px' }}>
+              <h4>{t.name} <small>(Điểm tối đa: {t.maxScore})</small></h4>
+              <div className="form-row" style={{ gap: '10px' }}>
                 <button 
                   onClick={() => navigate(`/admin/practices/${t.id}`)} 
                   className="btn btn-blue" 
-                  style={{ padding: "5px 10px", fontSize: "12px" }}
                 >
-                  Attempts
+                  Quản Lý Lượt Thi
                 </button>
-                {/* [NEW] Edit Button */}
                 <button 
                   onClick={() => navigate(`/admin/tests/edit/${t.id}`)} 
                   className="btn" 
-                  style={{ padding: "5px 10px", fontSize: "12px", background: 'white' }}
                 >
-                  Edit
+                  Sửa
                 </button>
-                <button onClick={() => handleDelete(t.id)} className="btn-text-delete">Delete</button>
+                <button onClick={() => handleDelete(t.id)} className="btn-text-delete">Xóa</button>
               </div>
             </div>
             <p>{t.description}</p>
-            <p><strong>Time Limit:</strong> {t.timeLimit} mins</p>
+            <p><strong>Thời gian làm bài:</strong> {t.timeLimit} phút</p>
           </div>
         ))}
       </div>

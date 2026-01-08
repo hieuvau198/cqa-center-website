@@ -6,15 +6,15 @@ import './index.css'
 
 // Pages
 import Login from "./pages/Auth/Login";
-import AdminHome from "./pages/Admin/AdminHome";
-import AdminLayout from "./pages/Admin/AdminLayout";
+import AdminHome from "./pages/Admin/Home/AdminHome";
+import AdminLayout from "./pages/Admin/Layout/AdminLayout";
 import QuestionList from "./pages/Admin/Questions/QuestionList";
 import QuestionForm from "./pages/Admin/Questions/QuestionForm";
 import TagList from "./pages/Admin/Tags/TagList";
 import TestList from "./pages/Admin/Tests/TestList";
 import TestForm from "./pages/Admin/Tests/TestForm";
 import PracticeManager from "./pages/Admin/Practices/PracticeManager";
-import AdminProfile from "./pages/Admin/AdminProfile";   
+import AdminProfile from "./pages/Admin/Profile/AdminProfile";   
 import PoolList from "./pages/Admin/Questions/PoolList";
 
 // Student Pages

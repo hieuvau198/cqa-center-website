@@ -21,7 +21,7 @@ const TagList = () => {
   };
 
   const handleDelete = async (id) => {
-    if(confirm("Delete this tag? Questions using it will lose the reference.")) {
+    if(confirm("Xóa thẻ này? Các câu hỏi đang sử dụng thẻ này sẽ bị mất liên kết.")) {
       await deleteTag(id);
       setTags(tags.filter(t => t.id !== id));
     }
@@ -29,18 +29,21 @@ const TagList = () => {
 
   return (
     <div className="admin-container">
-      <h2>Tags Management</h2>
+      <h2>Quản Lý Thẻ (Tags)</h2>
       
-      <form onSubmit={handleAddTag} className="form-row" style={{ marginBottom: "20px" }}>
-        <input 
-          className="form-input"
-          value={newTagName} 
-          onChange={(e) => setNewTagName(e.target.value)} 
-          placeholder="New Tag Name" 
-          required 
-        />
-        <button type="submit" className="btn btn-primary">+ Add Tag</button>
-      </form>
+      <div className="section-box">
+        <form onSubmit={handleAddTag} className="form-row" style={{ alignItems: "center" }}>
+          <input 
+            className="form-input"
+            value={newTagName} 
+            onChange={(e) => setNewTagName(e.target.value)} 
+            placeholder="Nhập tên thẻ mới..." 
+            style={{ flex: 1 }}
+            required 
+          />
+          <button type="submit" className="btn btn-primary">+ Thêm Thẻ</button>
+        </form>
+      </div>
 
       <div className="tag-list">
         {tags.map(tag => (
