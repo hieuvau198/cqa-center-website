@@ -1,6 +1,6 @@
 // src/firebase/firebaseQuery.js
 import { db, auth, googleProvider } from "./firebase-config";
-import { collection, getDocs, addDoc, deleteDoc, doc, setDoc, getDoc, query, where } from "firebase/firestore";
+import { collection, getDocs, addDoc, deleteDoc, doc, setDoc, getDoc, query, where, orderBy } from "firebase/firestore";
 import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
 
 //#region Path References
@@ -9,6 +9,7 @@ const testsRef = collection(db, "tests");
 const tagsRef = collection(db, "tags");
 const usersRef = collection(db, "users");
 const attemptsRef = collection(db, "attempts");
+const practicesRef = collection(db, "practices"); // <--- NEW COLLECTION
 //#endregion
 
 //#region QUESTIONs
@@ -52,7 +53,6 @@ export const getAllTests = async () => {
   }
 };
 
-// --- FIX: Added missing getTestById function ---
 export const getTestById = async (id) => {
   try {
     const docRef = doc(db, "tests", id);
@@ -83,6 +83,47 @@ export const deleteTest = async (id) => {
     await deleteDoc(doc(db, "tests", id));
   } catch (error) {
     console.error("Error deleting test:", error);
+    throw error;
+  }
+};
+//#endregion
+
+//#region PRACTICES (NEW FEATURE)
+export const createPractice = async (practiceData) => {
+  try {
+    // practiceData: { testId, entryCode, startTime, endTime, isActive, createdAt }
+    return await addDoc(practicesRef, {
+      ...practiceData,
+      createdAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error("Error creating practice:", error);
+    throw error;
+  }
+};
+
+export const getPracticesByTest = async (testId) => {
+  try {
+    const q = query(practicesRef, where("testId", "==", testId));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+  } catch (error) {
+    console.error("Error fetching practices:", error);
+    throw error;
+  }
+};
+
+// Use this for Student Side later to find a test by Code
+export const getPracticeByCode = async (entryCode) => {
+  try {
+    const q = query(practicesRef, where("entryCode", "==", entryCode));
+    const snapshot = await getDocs(q);
+    if (!snapshot.empty) {
+      return { ...snapshot.docs[0].data(), id: snapshot.docs[0].id };
+    }
+    return null;
+  } catch (error) {
+    console.error("Error finding practice by code:", error);
     throw error;
   }
 };
@@ -119,13 +160,11 @@ export const deleteTag = async (id) => {
 //#endregion
 
 //#region AUTHENTICATION
-
 export const registerWithEmail = async (email, password, role = "STUDENT") => {
   try {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
     
-    // Create User Document in Firestore
     await setDoc(doc(db, "users", user.uid), {
       uid: user.uid,
       email: user.email,
@@ -154,7 +193,6 @@ export const loginWithGoogle = async () => {
     const result = await signInWithPopup(auth, googleProvider);
     const user = result.user;
     
-    // Check if user doc exists, if not create one (Default: STUDENT)
     const userDoc = await getDoc(doc(db, "users", user.uid));
     if (!userDoc.exists()) {
       await setDoc(doc(db, "users", user.uid), {
@@ -190,7 +228,7 @@ export const getUserProfile = async (uid) => {
 //#region ATTEMPTs
 export const saveAttempt = async (attemptData) => {
   try {
-    // attemptData expected: { testId, testName, userId, userEmail, score, maxScore, answers, timestamp }
+    // attemptData now MUST include practiceId alongside testId
     return await addDoc(attemptsRef, {
       ...attemptData,
       timestamp: new Date().toISOString()
@@ -201,6 +239,19 @@ export const saveAttempt = async (attemptData) => {
   }
 };
 
+// Retrieve attempts for a specific PRACTICE SESSION (e.g., Morning Class)
+export const getAttemptsByPractice = async (practiceId) => {
+  try {
+    const q = query(attemptsRef, where("practiceId", "==", practiceId));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+  } catch (error) {
+    console.error("Error fetching attempts by practice:", error);
+    throw error;
+  }
+};
+
+// Fallback: Retrieve all attempts for the base Test
 export const getAttemptsByTest = async (testId) => {
   try {
     const q = query(attemptsRef, where("testId", "==", testId));
