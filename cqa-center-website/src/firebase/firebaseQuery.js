@@ -35,6 +35,17 @@ export const addPool = async (name) => {
     throw error;
   }
 };
+
+export const updatePool = async (id, name) => {
+  try {
+    const docRef = doc(db, "pools", id);
+    await updateDoc(docRef, { name });
+  } catch (error) {
+    console.error("Error updating pool:", error);
+    throw error;
+  }
+};
+
 //#endregion
 
 //#region QUESTIONs
@@ -229,6 +240,16 @@ export const getPracticeById = async (id) => {
     throw error;
   }
 };
+
+export const updatePractice = async (id, practiceData) => {
+  try {
+    const docRef = doc(db, "practices", id);
+    await updateDoc(docRef, practiceData);
+  } catch (error) {
+    console.error("Error updating practice:", error);
+    throw error;
+  }
+};
 //#endregion
 
 //#region TAGs
@@ -247,6 +268,16 @@ export const addTag = async (tagName) => {
     return await addDoc(tagsRef, { name: tagName });
   } catch (error) {
     console.error("Error adding tag:", error);
+    throw error;
+  }
+};
+
+export const updateTag = async (id, name) => {
+  try {
+    const docRef = doc(db, "tags", id);
+    await updateDoc(docRef, { name });
+  } catch (error) {
+    console.error("Error updating tag:", error);
     throw error;
   }
 };

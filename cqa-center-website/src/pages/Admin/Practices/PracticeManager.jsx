@@ -4,7 +4,8 @@ import {
   getTestById, 
   createPractice, 
   getPracticesByTest, 
-  getAttemptsByPractice 
+  getAttemptsByPractice,
+  updatePractice // Import this
 } from "../../../firebase/firebaseQuery";
 
 const PracticeManager = () => {
@@ -14,29 +15,29 @@ const PracticeManager = () => {
   // Data State
   const [testInfo, setTestInfo] = useState(null);
   const [practices, setPractices] = useState([]);
-  const [selectedPractice, setSelectedPractice] = useState(null); // The practice currently being viewed
-  const [attempts, setAttempts] = useState([]); // Attempts for the selected practice
+  const [selectedPractice, setSelectedPractice] = useState(null);
+  const [attempts, setAttempts] = useState([]);
 
   // UI State
   const [loading, setLoading] = useState(true);
-  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingId, setEditingId] = useState(null);
 
   // Form State
-  const [newPractice, setNewPractice] = useState({
+  const [formData, setFormData] = useState({
     entryCode: "",
     startTime: "",
     endTime: ""
   });
 
-  // 1. Initial Load: Fetch Test Info & Existing Practices
+  // 1. Initial Load
   useEffect(() => {
     const fetchData = async () => {
       try {
         const testData = await getTestById(testId);
         setTestInfo(testData);
-
-        const practiceData = await getPracticesByTest(testId);
-        setPractices(practiceData);
+        await refreshPractices();
       } catch (error) {
         console.error("Lỗi khi tải dữ liệu", error);
       } finally {
@@ -46,7 +47,12 @@ const PracticeManager = () => {
     if (testId) fetchData();
   }, [testId]);
 
-  // 2. Load Attempts when a specific Practice is selected
+  const refreshPractices = async () => {
+    const practiceData = await getPracticesByTest(testId);
+    setPractices(practiceData);
+  };
+
+  // 2. Load Attempts
   useEffect(() => {
     const fetchAttempts = async () => {
       if (selectedPractice) {
@@ -57,35 +63,63 @@ const PracticeManager = () => {
     fetchAttempts();
   }, [selectedPractice]);
 
-  // Handle Create Practice
-  const handleCreate = async (e) => {
+  // Handle Create or Update
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!newPractice.entryCode || !newPractice.startTime || !newPractice.endTime) {
+    if (!formData.entryCode || !formData.startTime || !formData.endTime) {
       alert("Vui lòng điền đầy đủ thông tin");
       return;
     }
 
     try {
-      const practicePayload = {
-        testId,
-        testName: testInfo.name,
-        entryCode: newPractice.entryCode,
-        startTime: newPractice.startTime,
-        endTime: newPractice.endTime,
-        isActive: true
-      };
+      if (isEditing && editingId) {
+        // UPDATE Existing Practice
+        await updatePractice(editingId, {
+            entryCode: formData.entryCode,
+            startTime: formData.startTime,
+            endTime: formData.endTime
+        });
+        alert("Cập nhật thành công!");
+      } else {
+        // CREATE New Practice
+        const practicePayload = {
+            testId,
+            testName: testInfo.name,
+            entryCode: formData.entryCode,
+            startTime: formData.startTime,
+            endTime: formData.endTime,
+            isActive: true
+        };
+        await createPractice(practicePayload);
+        alert("Đã tạo phiên luyện tập thành công!");
+      }
 
-      await createPractice(practicePayload);
-      
-      // Refresh list
-      const updatedPractices = await getPracticesByTest(testId);
-      setPractices(updatedPractices);
-      setShowCreateForm(false);
-      setNewPractice({ entryCode: "", startTime: "", endTime: "" });
-      alert("Đã tạo phiên luyện tập thành công!");
+      await refreshPractices();
+      resetForm();
     } catch (error) {
-      alert("Lỗi khi tạo phiên luyện tập");
+      alert("Lỗi khi lưu dữ liệu");
+      console.error(error);
     }
+  };
+
+  const startEdit = (practice, e) => {
+    e.stopPropagation(); // Prevent selecting the card
+    setFormData({
+        entryCode: practice.entryCode,
+        startTime: practice.startTime,
+        endTime: practice.endTime
+    });
+    setEditingId(practice.id);
+    setIsEditing(true);
+    setShowForm(true);
+    window.scrollTo(0, 0);
+  };
+
+  const resetForm = () => {
+    setShowForm(false);
+    setIsEditing(false);
+    setEditingId(null);
+    setFormData({ entryCode: "", startTime: "", endTime: "" });
   };
 
   if (loading) return <div className="admin-container">Đang tải...</div>;
@@ -100,23 +134,26 @@ const PracticeManager = () => {
           </button>
           <h2>Quản Lý Luyện Tập: <span className="text-highlight">{testInfo.name}</span></h2>
         </div>
-        <button className="btn btn-primary" onClick={() => setShowCreateForm(!showCreateForm)}>
-          {showCreateForm ? "Hủy Bỏ" : "+ Tạo Phiên Luyện Tập"}
+        <button className="btn btn-primary" onClick={() => { 
+            if(showForm) resetForm(); 
+            else setShowForm(true); 
+        }}>
+          {showForm ? "Hủy Bỏ" : "+ Tạo Phiên Luyện Tập"}
         </button>
       </div>
 
-      {/* CREATE PRACTICE FORM */}
-      {showCreateForm && (
+      {/* FORM (Create & Edit) */}
+      {showForm && (
         <div className="section-box" style={{ background: "#f0f4f8" }}>
-          <h4 className="section-title">Thiết Lập Phiên Mới</h4>
-          <form onSubmit={handleCreate} className="form-inline-creation">
+          <h4 className="section-title">{isEditing ? "Cập Nhật Phiên Luyện Tập" : "Thiết Lập Phiên Mới"}</h4>
+          <form onSubmit={handleSubmit} className="form-inline-creation">
             <div className="form-group">
               <label className="form-label">Mã Tham Gia (Code)</label>
               <input 
                 className="form-input" 
                 placeholder="VD: MATH-101-A" 
-                value={newPractice.entryCode}
-                onChange={e => setNewPractice({...newPractice, entryCode: e.target.value})}
+                value={formData.entryCode}
+                onChange={e => setFormData({...formData, entryCode: e.target.value})}
               />
             </div>
             <div className="form-group">
@@ -124,8 +161,8 @@ const PracticeManager = () => {
               <input 
                 className="form-input" 
                 type="datetime-local"
-                value={newPractice.startTime}
-                onChange={e => setNewPractice({...newPractice, startTime: e.target.value})}
+                value={formData.startTime}
+                onChange={e => setFormData({...formData, startTime: e.target.value})}
               />
             </div>
             <div className="form-group">
@@ -133,11 +170,13 @@ const PracticeManager = () => {
               <input 
                 className="form-input" 
                 type="datetime-local"
-                value={newPractice.endTime}
-                onChange={e => setNewPractice({...newPractice, endTime: e.target.value})}
+                value={formData.endTime}
+                onChange={e => setFormData({...formData, endTime: e.target.value})}
               />
             </div>
-            <button type="submit" className="btn btn-blue" style={{ height: "46px" }}>Lưu</button>
+            <button type="submit" className="btn btn-blue" style={{ height: "46px" }}>
+                {isEditing ? "Lưu Thay Đổi" : "Tạo Mới"}
+            </button>
           </form>
         </div>
       )}
@@ -152,8 +191,18 @@ const PracticeManager = () => {
                 key={p.id} 
                 onClick={() => setSelectedPractice(p)}
                 className={`card-selectable ${selectedPractice?.id === p.id ? 'active' : ''}`}
+                style={{ position: 'relative' }}
               >
-                <h4 style={{ margin: "0 0 10px 0" }}>Mã: {p.entryCode}</h4>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <h4 style={{ margin: "0 0 10px 0" }}>Mã: {p.entryCode}</h4>
+                    <button 
+                        onClick={(e) => startEdit(p, e)}
+                        className="btn btn-sm"
+                        style={{ fontSize: '0.8rem', padding: '2px 8px' }}
+                    >
+                        Sửa
+                    </button>
+                </div>
                 <p className="card-info-row"><strong>Bắt đầu:</strong> {new Date(p.startTime).toLocaleString('vi-VN')}</p>
                 <p className="card-info-row"><strong>Kết thúc:</strong> {new Date(p.endTime).toLocaleString('vi-VN')}</p>
               </div>

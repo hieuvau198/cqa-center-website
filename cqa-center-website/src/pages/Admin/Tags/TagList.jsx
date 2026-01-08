@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
-import { getAllTags, addTag, deleteTag } from "../../../firebase/firebaseQuery";
+import { getAllTags, addTag, deleteTag, updateTag } from "../../../firebase/firebaseQuery";
 
 const TagList = () => {
   const [tags, setTags] = useState([]);
   const [newTagName, setNewTagName] = useState("");
+  
+  // State for editing
+  const [editingId, setEditingId] = useState(null);
+  const [editName, setEditName] = useState("");
 
   const fetchTags = async () => {
     const data = await getAllTags();
@@ -27,6 +31,20 @@ const TagList = () => {
     }
   };
 
+  // Start editing mode
+  const startEdit = (tag) => {
+    setEditingId(tag.id);
+    setEditName(tag.name);
+  };
+
+  // Save changes
+  const handleUpdate = async (id) => {
+    if (!editName.trim()) return;
+    await updateTag(id, editName.trim());
+    setEditingId(null);
+    fetchTags();
+  };
+
   return (
     <div className="admin-container">
       <h2>Quản Lý Thẻ (Tags)</h2>
@@ -48,8 +66,34 @@ const TagList = () => {
       <div className="tag-list">
         {tags.map(tag => (
           <div key={tag.id} className="tag-chip">
-            <span>{tag.name}</span>
-            <button onClick={() => handleDelete(tag.id)} className="tag-chip-delete">✕</button>
+            {editingId === tag.id ? (
+              // EDIT MODE
+              <div style={{ display: 'flex', gap: '5px', alignItems: 'center' }}>
+                <input 
+                  value={editName} 
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="form-input"
+                  style={{ padding: '2px 5px', height: 'auto', width: '150px' }}
+                />
+                <button onClick={() => handleUpdate(tag.id)} className="btn btn-success" style={{ padding: '2px 5px', fontSize: '12px' }}>✓</button>
+                <button onClick={() => setEditingId(null)} className="btn btn-danger" style={{ padding: '2px 5px', fontSize: '12px' }}>✕</button>
+              </div>
+            ) : (
+              // VIEW MODE
+              <>
+                <span>{tag.name}</span>
+                <div style={{ display: 'flex', gap: '5px', marginLeft: '10px' }}>
+                    <button 
+                        onClick={() => startEdit(tag)} 
+                        className="btn" 
+                        style={{ padding: '0 5px', fontSize: '12px', background: 'transparent', color: '#007bff', border: 'none' }}
+                    >
+                        ✎
+                    </button>
+                    <button onClick={() => handleDelete(tag.id)} className="tag-chip-delete">✕</button>
+                </div>
+              </>
+            )}
           </div>
         ))}
       </div>

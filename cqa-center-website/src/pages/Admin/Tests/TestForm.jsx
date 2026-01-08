@@ -133,7 +133,7 @@ const TestForm = () => {
         </div>
 
         <button type="submit" className="btn btn-blue" style={{ marginTop: "10px" }}>
-            {isEditMode ? "Update Test" : "Save Test"}
+            {isEditMode ? "Cập Nhật" : "Lưu"}
         </button>
       </form>
     </div>

@@ -6,7 +6,8 @@ import {
   deleteQuestion, 
   getAllPools, 
   getAllTags, 
-  updateQuestion 
+  updateQuestion,
+  updatePool // <--- Import this
 } from "../../../firebase/firebaseQuery";
 
 const TYPE_LABELS = {
@@ -29,6 +30,10 @@ const QuestionList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTags, setSelectedTags] = useState([]);
 
+  // Edit Name State
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editName, setEditName] = useState("");
+
   useEffect(() => {
     const fetchData = async () => {
       const tagsData = await getAllTags();
@@ -43,7 +48,10 @@ const QuestionList = () => {
 
         const pools = await getAllPools();
         const currentPool = pools.find(p => p.id === poolId);
-        if (currentPool) setPoolName(currentPool.name);
+        if (currentPool) {
+          setPoolName(currentPool.name);
+          setEditName(currentPool.name); // Initialize edit name
+        }
       } else {
         setPoolQuestions(allQ);
       }
@@ -82,6 +90,18 @@ const QuestionList = () => {
     }
   };
 
+  // Handle Pool Name Update
+  const handleUpdateName = async () => {
+    if (!editName.trim()) return;
+    try {
+      await updatePool(poolId, editName.trim());
+      setPoolName(editName.trim());
+      setIsEditingName(false);
+    } catch (error) {
+      alert("Lỗi khi cập nhật tên ngân hàng");
+    }
+  };
+
   const filteredAllQuestions = allQuestions.filter(q => {
     const nameMatch = q.name.toLowerCase().includes(searchTerm.toLowerCase());
     const qTags = q.tagIds || [];
@@ -95,7 +115,36 @@ const QuestionList = () => {
       <div className="page-header">
         <div>
           <small style={{ color: "#888", textTransform: "uppercase" }}>Quản Lý Ngân Hàng</small>
-          <h2>{poolName}</h2>
+          
+          {/* EDITABLE POOL NAME */}
+          {poolId && isEditingName ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "5px" }}>
+              <input 
+                className="form-input"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                style={{ fontSize: "1.5rem", fontWeight: "bold", padding: "5px", width: "300px" }}
+                autoFocus
+              />
+              <button onClick={handleUpdateName} className="btn btn-success">Lưu</button>
+              <button onClick={() => { setIsEditingName(false); setEditName(poolName); }} className="btn btn-secondary">Hủy</button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <h2>{poolName}</h2>
+              {poolId && (
+                <button 
+                  onClick={() => setIsEditingName(true)} 
+                  className="btn" 
+                  title="Đổi tên ngân hàng"
+                  style={{ background: "transparent", border: "none", cursor: "pointer", fontSize: "1.2rem", color: "#666" }}
+                >
+                  ✎
+                </button>
+              )}
+            </div>
+          )}
+
         </div>
         <Link to="/admin/questions/new">
           <button className="btn btn-primary">+ Tạo Câu Hỏi Mới</button>

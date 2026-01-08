@@ -33,6 +33,7 @@ function App() {
 
         {/* Admin Routes */}
         <Route path="/admin" element={<AdminLayout />}>
+          <Route index element={<AdminHome />} />
           <Route path="questions" element={<PoolList />} /> 
           <Route path="questions/all" element={<QuestionList />} /> 
           <Route path="questions/pool/:poolId" element={<QuestionList />} /> 
