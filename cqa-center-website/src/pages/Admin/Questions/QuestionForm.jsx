@@ -13,7 +13,7 @@ const QuestionForm = () => {
     explanation: "", 
     type: "MC_SINGLE", 
     imageUrl: "",
-    poolId: "" // New Field
+    poolId: ""
   });
   
   const [availableTags, setAvailableTags] = useState([]);
@@ -106,7 +106,7 @@ const QuestionForm = () => {
       alert("Đã tạo câu hỏi!");
     }
     
-    navigate(-1); // Go back to previous page
+    navigate(-1);
   };
 
   return (
@@ -158,12 +158,12 @@ const QuestionForm = () => {
 
         <hr style={{ width: '100%', margin: "20px 0" }} />
 
-        {/* DYNAMIC ANSWERS (Reuse logic from previous, but with value binding) */}
+        {/* DYNAMIC ANSWERS */}
         {(formData.type === "MC_SINGLE" || formData.type === "MC_MULTI") && (
           <div>
             <h3>Các lựa chọn trả lời</h3>
             {answers.map((ans, index) => (
-              <div key={index} className="section-box" style={{ borderStyle: 'dashed' }}>
+              <div key={index} className="box-dashed">
                 <div className="form-row" style={{ alignItems: 'center' }}>
                   <input className="form-input" placeholder="Nội dung lựa chọn" value={ans.name} onChange={e => handleAnswerChange(index, 'name', e.target.value)} required />
                   <label style={{ whiteSpace: 'nowrap', marginLeft: '10px' }}>
@@ -182,7 +182,7 @@ const QuestionForm = () => {
            <div>
              <h3>Các cặp nối</h3>
              {answers.map((ans, index) => (
-               <div key={index} className="section-box" style={{ borderStyle: 'dashed' }}>
+               <div key={index} className="box-dashed">
                  <div className="form-row" style={{ alignItems: 'center', gap: "10px" }}>
                    <input className="form-input" placeholder="Vế Trái" value={ans.name} onChange={e => handleAnswerChange(index, 'name', e.target.value)} required />
                    <span>→</span>
@@ -202,7 +202,7 @@ const QuestionForm = () => {
           </div>
         )}
 
-        <div style={{ marginTop: "30px", display: "flex", justifyContent: "flex-end" }}>
+        <div className="form-actions-right">
           <button type="submit" className="btn btn-primary" style={{ padding: "10px 30px" }}>
             {isEditMode ? "Cập Nhật Câu Hỏi" : "Tạo Câu Hỏi"}
           </button>

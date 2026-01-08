@@ -20,26 +20,23 @@ const QuestionList = () => {
   const { poolId } = useParams(); 
   
   // Data State
-  const [poolQuestions, setPoolQuestions] = useState([]); // View A Data
-  const [allQuestions, setAllQuestions] = useState([]);   // View B Data
-  const [tags, setTags] = useState([]);                   // For Filter
+  const [poolQuestions, setPoolQuestions] = useState([]);
+  const [allQuestions, setAllQuestions] = useState([]);
+  const [tags, setTags] = useState([]);
   const [poolName, setPoolName] = useState("Tất Cả Câu Hỏi");
 
   // UI / Filter State
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTags, setSelectedTags] = useState([]);
 
-  // 1. Initial Data Loading
   useEffect(() => {
     const fetchData = async () => {
-      // Always load tags and all questions
       const tagsData = await getAllTags();
       setTags(tagsData);
 
       const allQ = await getAllQuestions();
       setAllQuestions(allQ);
 
-      // If viewing a specific pool, load its details
       if (poolId) {
         const poolQ = await getQuestionsByPool(poolId);
         setPoolQuestions(poolQ);
@@ -48,36 +45,23 @@ const QuestionList = () => {
         const currentPool = pools.find(p => p.id === poolId);
         if (currentPool) setPoolName(currentPool.name);
       } else {
-        // If viewing "All Questions" page, just treat poolQuestions as all
         setPoolQuestions(allQ);
       }
     };
     fetchData();
   }, [poolId]);
 
-  // 2. Logic: Add Question to Pool
   const handleAddToPool = async (question) => {
     if (!poolId) return;
-    
-    // Update DB
     await updateQuestion(question.id, { poolId: poolId });
-    
-    // Optimistic UI Update
     const updatedQ = { ...question, poolId: poolId };
     setPoolQuestions([...poolQuestions, updatedQ]);
-    
-    // Update list B to reflect status change
     setAllQuestions(allQuestions.map(q => q.id === question.id ? updatedQ : q));
   };
 
-  // 3. Logic: Remove Question from Pool
   const handleRemoveFromPool = async (question) => {
     if (!poolId) return;
-
-    // Update DB (set poolId to empty string or null)
     await updateQuestion(question.id, { poolId: "" });
-    
-    // Optimistic UI Update
     setPoolQuestions(poolQuestions.filter(q => q.id !== question.id));
     setAllQuestions(allQuestions.map(q => q.id === question.id ? { ...q, poolId: "" } : q));
   };
@@ -98,14 +82,10 @@ const QuestionList = () => {
     }
   };
 
-  // 4. Filter Logic for "View B" (All Questions)
   const filteredAllQuestions = allQuestions.filter(q => {
     const nameMatch = q.name.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    // Check if question has ALL selected tags
     const qTags = q.tagIds || [];
     const tagsMatch = selectedTags.length === 0 || selectedTags.every(t => qTags.includes(t));
-
     return nameMatch && tagsMatch;
   });
 
@@ -123,7 +103,7 @@ const QuestionList = () => {
       </div>
 
       {/* SEARCH & FILTERS BAR */}
-      <div className="section-box" style={{ marginBottom: "20px" }}>
+      <div className="section-box">
         <div className="form-row" style={{ alignItems: "center", marginBottom: "15px" }}>
           <input 
             className="form-input" 
@@ -134,27 +114,19 @@ const QuestionList = () => {
           />
         </div>
         
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center" }}>
+        <div className="filter-bar">
           <span style={{ fontSize: "0.9rem", fontWeight: "bold" }}>Lọc theo thẻ:</span>
           {tags.map(tag => (
             <button 
               key={tag.id}
               onClick={() => toggleTag(tag.id)}
-              style={{
-                padding: "6px 12px",
-                borderRadius: "20px",
-                border: "1px solid #aaa",
-                background: selectedTags.includes(tag.id) ? "#2c3e50" : "#fff",
-                color: selectedTags.includes(tag.id) ? "#fff" : "#333",
-                cursor: "pointer",
-                fontSize: "0.8rem"
-              }}
+              className={`btn-filter ${selectedTags.includes(tag.id) ? 'active' : ''}`}
             >
               {tag.name}
             </button>
           ))}
           {selectedTags.length > 0 && (
-            <button onClick={() => setSelectedTags([])} style={{ background: "none", border: "none", textDecoration: "underline", cursor: "pointer", fontSize: "0.8rem" }}>
+            <button onClick={() => setSelectedTags([])} className="btn-filter-clear">
               Xóa lọc
             </button>
           )}
@@ -163,7 +135,7 @@ const QuestionList = () => {
 
       {/* SPLIT VIEW (Only when inside a Pool) */}
       {poolId ? (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "25px" }}>
+        <div className="grid-split">
           
           {/* --- VIEW A: CURRENT POOL --- */}
           <div className="section-box" style={{ background: "#f0f8ff", border: "2px solid #3498db" }}>
@@ -194,7 +166,7 @@ const QuestionList = () => {
           </div>
 
           {/* --- VIEW B: ALL QUESTIONS (SELECTOR) --- */}
-          <div className="section-box" style={{ background: "#fff" }}>
+          <div className="section-box">
             <h3 style={{ borderBottom: "1px solid #ccc", paddingBottom: "10px", marginTop: 0 }}>
               Chế độ xem B: Kho câu hỏi
             </h3>
@@ -205,23 +177,18 @@ const QuestionList = () => {
                 return (
                   <div 
                     key={q.id} 
-                    className="item-card" 
-                    style={{ 
-                      padding: "15px", 
-                      marginBottom: "10px", 
-                      opacity: isInCurrentPool ? 0.6 : 1, // Dim if already added
-                      backgroundColor: isInCurrentPool ? "#eee" : "#fff"
-                    }}
+                    className={`item-card ${isInCurrentPool ? 'card-dimmed' : ''}`}
+                    style={{ padding: "15px", marginBottom: "10px" }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
                       <div>
                         <strong>{q.name}</strong>
                         <div style={{ display: "flex", gap: "5px", marginTop: "5px" }}>
-                          <span style={{ fontSize: "0.8em", background: "#eee", padding: "2px 6px", borderRadius: "4px" }}>
+                          <span className="badge badge-gray">
                             {TYPE_LABELS[q.type]}
                           </span>
                           {q.poolId && q.poolId !== poolId && (
-                            <span style={{ fontSize: "0.8em", background: "#fff3cd", padding: "2px 6px", borderRadius: "4px" }}>
+                            <span className="badge badge-warn">
                               Ở ngân hàng khác
                             </span>
                           )}
@@ -253,7 +220,7 @@ const QuestionList = () => {
 
         </div>
       ) : (
-        /* FALLBACK VIEW (If not in a specific pool, just show list) */
+        /* FALLBACK VIEW */
         <div className="list-container">
           {filteredAllQuestions.map(q => (
             <div key={q.id} className="item-card">

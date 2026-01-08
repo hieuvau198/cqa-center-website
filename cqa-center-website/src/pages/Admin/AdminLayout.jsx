@@ -1,5 +1,5 @@
-import { Link, Outlet, useNavigate } from "react-router-dom"; // Import useNavigate
-import { logoutUser } from "../../firebase/firebaseQuery"; // Import logout
+import { Link, Outlet, useNavigate } from "react-router-dom";
+import { logoutUser } from "../../firebase/firebaseQuery";
 
 const AdminLayout = () => {
   const navigate = useNavigate();
@@ -14,27 +14,25 @@ const AdminLayout = () => {
   };
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh" }}>
+    <div className="admin-layout">
       {/* Sidebar */}
-      <aside style={{ width: "250px", backgroundColor: "#2c3e50", color: "white", padding: "20px", display: "flex", flexDirection: "column" }}>
+      <aside className="sidebar">
         <h3>Bảng Quản Trị</h3>
-        <ul style={{ listStyle: "none", padding: 0, flex: 1 }}>
-          <li style={{ margin: "15px 0" }}>
-            <Link to="/admin" style={{ color: "white", textDecoration: "none" }}>Trang Chủ</Link>
+        <ul className="sidebar-nav">
+          <li>
+            <Link to="/admin" className="sidebar-link">Tổng quan</Link>
           </li>
-          <li style={{ybMm: "15px 0" }}>
-            <Link to="/admin/questions" style={{ color: "white", textDecoration: "none" }}>Quản Lý Ngân Hàng Câu Hỏi</Link>
+          <li>
+            <Link to="/admin/questions" className="sidebar-link">Ngân Hàng Câu Hỏi</Link>
           </li>
-          <li style={{ybMm: "15px 0" }}>
-            <Link to="/admin/tests" style={{ color: "white", textDecoration: "none" }}>Quản Lý Bài Kiểm Tra</Link>
+          <li>
+            <Link to="/admin/tests" className="sidebar-link">Bài Kiểm Tra</Link>
           </li>
-          <li style={{ margin: "15px 0" }}>
-            <Link to="/admin/tags" style={{ color: "white", textDecoration: "none" }}>Quản Lý Thẻ (Tags)</Link>
+          <li>
+            <Link to="/admin/tags" className="sidebar-link">Tag</Link>
           </li>
-          <hr style={{ borderColor: "#4b6cb7", margin: "15px 0" }} />
-          <li style={{ margin: "15px 0" }}>
-            {/* New Profile Link */}
-            <Link to="/admin/profile" style={{ color: "#fff", textDecoration: "underline" }}>Hồ Sơ Của Tôi</Link>
+          <li>
+            <Link to="/admin/profile" className="sidebar-link">Hồ Sơ Cá Nhân</Link>
           </li>
         </ul>
 
@@ -48,7 +46,7 @@ const AdminLayout = () => {
       </aside>
 
       {/* Main Content Area */}
-      <main style={{ flex: 1, padding: "20px", backgroundColor: "#f4f6f8" }}>
+      <main className="main-content">
         <Outlet />
       </main>
     </div>

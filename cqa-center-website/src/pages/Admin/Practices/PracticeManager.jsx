@@ -1,4 +1,3 @@
-// src/pages/Admin/Practices/PracticeManager.jsx
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { 
@@ -39,7 +38,7 @@ const PracticeManager = () => {
         const practiceData = await getPracticesByTest(testId);
         setPractices(practiceData);
       } catch (error) {
-        console.error("Error loading data", error);
+        console.error("Lỗi khi tải dữ liệu", error);
       } finally {
         setLoading(false);
       }
@@ -62,14 +61,14 @@ const PracticeManager = () => {
   const handleCreate = async (e) => {
     e.preventDefault();
     if (!newPractice.entryCode || !newPractice.startTime || !newPractice.endTime) {
-      alert("Please fill in all fields");
+      alert("Vui lòng điền đầy đủ thông tin");
       return;
     }
 
     try {
       const practicePayload = {
         testId,
-        testName: testInfo.name, // useful for display later
+        testName: testInfo.name,
         entryCode: newPractice.entryCode,
         startTime: newPractice.startTime,
         endTime: newPractice.endTime,
@@ -83,43 +82,45 @@ const PracticeManager = () => {
       setPractices(updatedPractices);
       setShowCreateForm(false);
       setNewPractice({ entryCode: "", startTime: "", endTime: "" });
-      alert("Practice Session Created!");
+      alert("Đã tạo phiên luyện tập thành công!");
     } catch (error) {
-      alert("Error creating practice");
+      alert("Lỗi khi tạo phiên luyện tập");
     }
   };
 
-  if (loading) return <div className="admin-container">Loading...</div>;
-  if (!testInfo) return <div className="admin-container">Test not found.</div>;
+  if (loading) return <div className="admin-container">Đang tải...</div>;
+  if (!testInfo) return <div className="admin-container">Không tìm thấy bài kiểm tra.</div>;
 
   return (
     <div className="admin-container">
       <div className="page-header">
         <div>
-          <button onClick={() => navigate("/admin/tests")} className="btn" style={{ marginBottom: "10px" }}>← Back to Tests</button>
-          <h2>Manage Practices for: <span style={{color: '#007bff'}}>{testInfo.name}</span></h2>
+          <button onClick={() => navigate("/admin/tests")} className="btn" style={{ marginBottom: "10px" }}>
+            ← Quay lại Bài Kiểm Tra
+          </button>
+          <h2>Quản Lý Luyện Tập: <span className="text-highlight">{testInfo.name}</span></h2>
         </div>
         <button className="btn btn-primary" onClick={() => setShowCreateForm(!showCreateForm)}>
-          {showCreateForm ? "Cancel" : "+ Create New Practice"}
+          {showCreateForm ? "Hủy Bỏ" : "+ Tạo Phiên Luyện Tập"}
         </button>
       </div>
 
       {/* CREATE PRACTICE FORM */}
       {showCreateForm && (
-        <div style={{ background: "#f0f4f8", padding: "20px", borderRadius: "8px", marginBottom: "20px" }}>
-          <h4>Create New Practice Session</h4>
-          <form onSubmit={handleCreate} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: "10px", alignItems: "end" }}>
-            <div>
-              <label style={{display: "block", marginBottom: "5px", fontSize: "12px"}}>Entry Code</label>
+        <div className="section-box" style={{ background: "#f0f4f8" }}>
+          <h4 className="section-title">Thiết Lập Phiên Mới</h4>
+          <form onSubmit={handleCreate} className="form-inline-creation">
+            <div className="form-group">
+              <label className="form-label">Mã Tham Gia (Code)</label>
               <input 
                 className="form-input" 
-                placeholder="e.g. MATH-101-A" 
+                placeholder="VD: MATH-101-A" 
                 value={newPractice.entryCode}
                 onChange={e => setNewPractice({...newPractice, entryCode: e.target.value})}
               />
             </div>
-            <div>
-              <label style={{display: "block", marginBottom: "5px", fontSize: "12px"}}>Start Time</label>
+            <div className="form-group">
+              <label className="form-label">Thời Gian Bắt Đầu</label>
               <input 
                 className="form-input" 
                 type="datetime-local"
@@ -127,8 +128,8 @@ const PracticeManager = () => {
                 onChange={e => setNewPractice({...newPractice, startTime: e.target.value})}
               />
             </div>
-            <div>
-              <label style={{display: "block", marginBottom: "5px", fontSize: "12px"}}>End Time</label>
+            <div className="form-group">
+              <label className="form-label">Thời Gian Kết Thúc</label>
               <input 
                 className="form-input" 
                 type="datetime-local"
@@ -136,28 +137,25 @@ const PracticeManager = () => {
                 onChange={e => setNewPractice({...newPractice, endTime: e.target.value})}
               />
             </div>
-            <button type="submit" className="btn btn-blue" style={{ height: "40px" }}>Save</button>
+            <button type="submit" className="btn btn-blue" style={{ height: "46px" }}>Lưu</button>
           </form>
         </div>
       )}
 
       {/* PRACTICE LIST */}
       <div className="list-container">
-        <h3>Existing Practice Sessions</h3>
-        {practices.length === 0 ? <p>No practices created yet.</p> : (
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "30px" }}>
+        <h3>Các Phiên Đang Mở</h3>
+        {practices.length === 0 ? <p>Chưa có phiên luyện tập nào được tạo.</p> : (
+          <div style={{ display: "flex", gap: "15px", flexWrap: "wrap", marginBottom: "30px" }}>
             {practices.map(p => (
               <div 
                 key={p.id} 
                 onClick={() => setSelectedPractice(p)}
-                style={{
-                  border: selectedPractice?.id === p.id ? "2px solid #007bff" : "1px solid #ddd",
-                  padding: "15px", borderRadius: "8px", cursor: "pointer", background: "white", width: "250px"
-                }}
+                className={`card-selectable ${selectedPractice?.id === p.id ? 'active' : ''}`}
               >
-                <h4 style={{ margin: "0 0 10px 0" }}>Code: {p.entryCode}</h4>
-                <p style={{ fontSize: "12px", margin: "5px 0" }}><strong>Start:</strong> {new Date(p.startTime).toLocaleString()}</p>
-                <p style={{ fontSize: "12px", margin: "5px 0" }}><strong>End:</strong> {new Date(p.endTime).toLocaleString()}</p>
+                <h4 style={{ margin: "0 0 10px 0" }}>Mã: {p.entryCode}</h4>
+                <p className="card-info-row"><strong>Bắt đầu:</strong> {new Date(p.startTime).toLocaleString('vi-VN')}</p>
+                <p className="card-info-row"><strong>Kết thúc:</strong> {new Date(p.endTime).toLocaleString('vi-VN')}</p>
               </div>
             ))}
           </div>
@@ -166,27 +164,29 @@ const PracticeManager = () => {
 
       {/* SELECTED PRACTICE ATTEMPTS */}
       {selectedPractice && (
-        <div className="section-box" style={{ marginTop: "20px", borderTop: "2px solid #eee", paddingTop: "20px" }}>
-          <h3>Results for Code: {selectedPractice.entryCode}</h3>
-          <p>Attempts: {attempts.length}</p>
+        <div className="section-box" style={{ borderTop: "4px solid #007bff" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <h3>Kết Quả: {selectedPractice.entryCode}</h3>
+            <span style={{ fontSize: "1.1rem" }}>Tổng lượt thi: <strong>{attempts.length}</strong></span>
+          </div>
 
-          <table style={{ width: "100%", borderCollapse: "collapse", marginTop: "10px" }}>
+          <table className="table-responsive">
             <thead>
-              <tr style={{ background: "#f8f9fa", textAlign: "left" }}>
-                <th style={{ padding: "10px" }}>Student Email</th>
-                <th style={{ padding: "10px" }}>Score</th>
-                <th style={{ padding: "10px" }}>Date</th>
+              <tr>
+                <th>Email Học Viên</th>
+                <th>Điểm Số</th>
+                <th>Thời Gian Nộp Bài</th>
               </tr>
             </thead>
             <tbody>
               {attempts.length === 0 ? (
-                <tr><td colSpan="3" style={{ padding: "20px", textAlign: "center" }}>No students have taken this practice yet.</td></tr>
+                <tr><td colSpan="3" style={{ textAlign: "center", padding: "30px" }}>Chưa có học viên nào làm bài.</td></tr>
               ) : (
                 attempts.map(att => (
-                  <tr key={att.id} style={{ borderBottom: "1px solid #eee" }}>
-                    <td style={{ padding: "10px" }}>{att.userEmail || "Unknown"}</td>
-                    <td style={{ padding: "10px" }}><b>{att.score}</b> / {att.maxScore}</td>
-                    <td style={{ padding: "10px" }}>{new Date(att.timestamp).toLocaleString()}</td>
+                  <tr key={att.id}>
+                    <td>{att.userEmail || "Không xác định"}</td>
+                    <td><b style={{ fontSize: "1.1em" }}>{att.score}</b> / {att.maxScore}</td>
+                    <td>{new Date(att.timestamp).toLocaleString('vi-VN')}</td>
                   </tr>
                 ))
               )}
