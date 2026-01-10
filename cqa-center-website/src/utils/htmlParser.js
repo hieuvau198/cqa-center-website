@@ -1,3 +1,5 @@
+// hieuvau198/cqa-center-website/cqa-center-website-feat-import-file/cqa-center-website/src/utils/htmlParser.js
+
 /**
  * Parses MS Word HTML content to extract questions.
  * @param {string} htmlString - The raw HTML content.
@@ -110,8 +112,7 @@ export const parseWordHtml = (htmlString) => {
 
 /**
  * Helper to split a paragraph's HTML into options A, B, C, D.
- * Handles mixed content like: "<b>A.</b> content <b>B.</b> content"
- * and complex markers like "<b><u>C</u>.</b>"
+ * recursively traversing nodes to handle nested structures (like spans containing all options).
  */
 function extractOptionsFromParagraph(pElement, currentQuestion) {
   let currentOptionId = null; // 'A', 'B', 'C', 'D'
@@ -128,68 +129,80 @@ function extractOptionsFromParagraph(pElement, currentQuestion) {
     buffer = document.createElement('div'); // Reset
   };
 
-  // Helper to check if a node REPRESENTS a marker
-  // Returns { id: 'A', cleanNode: Node } if found, else null
+  /**
+   * Checks if a node IS strictly a marker wrapper.
+   * Example: <b>A.</b> or <span>A.</span> or TextNode "A."
+   * Returns { id: 'A' } if true, null otherwise.
+   */
   const getMarkerInfo = (node) => {
-    // We look at textContent. 
-    // Example 1: node is <b>A.</b> -> text "A." -> MATCH
-    // Example 2: node is <b><u>C</u>.</b> -> text "C." -> MATCH
-    // Example 3: node is TextNode "A." -> MATCH
-    
-    const text = node.textContent.trim().replace(/\u00a0/g, " ");
-    const match = text.match(/^([A-D])[\.:]/);
-    
-    if (match) {
-      // We found a marker text. 
-      // We must remove the marker text from the node to get the content (if any)
-      // Cloning is safer to avoid destroying the main iteration context
-      const cleanNode = node.cloneNode(true);
-      
-      // Recursively remove the "A." prefix from the text nodes inside
-      let removed = false;
-      const removePrefix = (el) => {
-        if (removed) return;
-        if (el.nodeType === Node.TEXT_NODE) {
-           const t = el.textContent.replace(/\u00a0/g, " ").trimStart();
-           if (t.match(/^[A-D][\.:]/)) {
-             // Replace matches in the original content to preserve formatting
-             // We replace the pattern + any trailing spaces
-             el.textContent = el.textContent.replace(/^\s*[A-D][\.:]\s*/, "");
-             removed = true;
-           }
-        } else {
-           el.childNodes.forEach(child => removePrefix(child));
-        }
-      };
-      
-      removePrefix(cleanNode);
-      
-      return { id: match[1], cleanNode };
-    }
+    const text = node.textContent.replace(/\u00a0/g, " ").trim();
+    const match = text.match(/^([A-D])[\.:]$/);
+    if (match) return { id: match[1] };
     return null;
   };
 
-  // Iterate over all children of the paragraph
-  Array.from(pElement.childNodes).forEach(node => {
-    const markerInfo = getMarkerInfo(node);
+  /**
+   * Checks if a node MIGHT CONTAIN a marker inside it.
+   * Used to decide whether to recurse or treat as atomic content.
+   */
+  const containsMarkerPattern = (node) => {
+    const text = node.textContent.replace(/\u00a0/g, " ");
+    return /[A-D][\.:]/.test(text);
+  };
 
+  /**
+   * Recursive processor
+   */
+  const processNode = (node) => {
+    // 1. If Text Node
+    if (node.nodeType === Node.TEXT_NODE) {
+       const text = node.textContent.replace(/\u00a0/g, " ");
+       
+       // Check if this text STARTS with a marker: "A. Content..."
+       const startMatch = text.match(/^\s*([A-D])[\.:]\s*/);
+       
+       if (startMatch) {
+         flush(); // Save previous
+         currentOptionId = startMatch[1];
+         
+         // Add the rest of the text (after the marker) to the buffer
+         const rest = text.substring(startMatch[0].length); // Keep spaces?
+         // Actually, typically we want to trim the leading space after "A."
+         if (rest) {
+            buffer.appendChild(document.createTextNode(rest));
+         }
+       } else {
+         // Just content
+         if (currentOptionId) {
+            buffer.appendChild(node.cloneNode(true));
+         }
+       }
+       return;
+    }
+
+    // 2. If Element Node
+    // First, check if the element ITSELF is a marker (e.g. <b>A.</b>)
+    const markerInfo = getMarkerInfo(node);
     if (markerInfo) {
-      // Found a new marker!
-      flush(); // Save previous option
+      flush();
       currentOptionId = markerInfo.id;
-      
-      // If the node had content *after* the label (e.g. "A. 5"), add it
-      if (markerInfo.cleanNode.textContent.trim() !== "" || markerInfo.cleanNode.querySelector('img')) {
-        buffer.appendChild(markerInfo.cleanNode);
-      }
+      return; // Do not add the marker element to buffer
+    }
+
+    // If not a marker itself, does it CONTAIN markers?
+    if (containsMarkerPattern(node)) {
+      // Recurse to unwrap
+      Array.from(node.childNodes).forEach(child => processNode(child));
     } else {
-      // No marker, just content.
-      // Only add if we have started collecting an option.
+      // No markers inside, treat as atomic content block (e.g. an image, or formatted text)
       if (currentOptionId) {
         buffer.appendChild(node.cloneNode(true));
       }
     }
-  });
+  };
 
-  flush(); // Flush the last option (D)
+  // Start processing all children of the paragraph
+  Array.from(pElement.childNodes).forEach(processNode);
+  
+  flush(); // Flush the last option found
 }
