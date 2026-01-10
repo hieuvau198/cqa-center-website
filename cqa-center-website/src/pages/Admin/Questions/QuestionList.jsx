@@ -7,7 +7,8 @@ import {
   getAllPools, 
   getAllTags, 
   updateQuestion,
-  updatePool // <--- Import this
+  updatePool,
+  deleteFile // <--- Import deleteFile
 } from "../../../firebase/firebaseQuery";
 
 const TYPE_LABELS = {
@@ -50,7 +51,7 @@ const QuestionList = () => {
         const currentPool = pools.find(p => p.id === poolId);
         if (currentPool) {
           setPoolName(currentPool.name);
-          setEditName(currentPool.name); // Initialize edit name
+          setEditName(currentPool.name);
         }
       } else {
         setPoolQuestions(allQ);
@@ -74,11 +75,51 @@ const QuestionList = () => {
     setAllQuestions(allQuestions.map(q => q.id === question.id ? { ...q, poolId: "" } : q));
   };
 
+  // Helper to find image URLs in HTML content
+  const extractImageUrls = (htmlString) => {
+    if (!htmlString) return [];
+    // Regex to match src="..." where the url contains firebase storage
+    const regex = /<img[^>]+src="([^">]+)"/g;
+    const urls = [];
+    let match;
+    while ((match = regex.exec(htmlString)) !== null) {
+      if (match[1].includes("firebasestorage.googleapis.com")) {
+        urls.push(match[1]);
+      }
+    }
+    return urls;
+  };
+
   const handleDelete = async (id) => {
     if(confirm("Bạn có chắc chắn muốn xóa vĩnh viễn câu hỏi này không?")) {
-      await deleteQuestion(id);
-      setPoolQuestions(poolQuestions.filter(q => q.id !== id));
-      setAllQuestions(allQuestions.filter(q => q.id !== id));
+      try {
+        // 1. Find the question data to get image URLs
+        const questionToDelete = allQuestions.find(q => q.id === id);
+        
+        if (questionToDelete) {
+          // 2. Extract URLs from Content and Explanation
+          const contentImages = extractImageUrls(questionToDelete.content);
+          const explanationImages = extractImageUrls(questionToDelete.explanation);
+          const allImages = [...new Set([...contentImages, ...explanationImages])]; // Unique URLs
+
+          // 3. Delete files from Storage
+          if (allImages.length > 0) {
+            console.log("Deleting images...", allImages);
+            await Promise.all(allImages.map(url => deleteFile(url)));
+          }
+        }
+
+        // 4. Delete document from Firestore
+        await deleteQuestion(id);
+        
+        // 5. Update UI
+        setPoolQuestions(poolQuestions.filter(q => q.id !== id));
+        setAllQuestions(allQuestions.filter(q => q.id !== id));
+
+      } catch (error) {
+        console.error("Error deleting question or images:", error);
+        alert("Có lỗi xảy ra khi xóa câu hỏi.");
+      }
     }
   };
 
@@ -90,7 +131,6 @@ const QuestionList = () => {
     }
   };
 
-  // Handle Pool Name Update
   const handleUpdateName = async () => {
     if (!editName.trim()) return;
     try {
@@ -116,7 +156,6 @@ const QuestionList = () => {
         <div>
           <small style={{ color: "#888", textTransform: "uppercase" }}>Quản Lý Ngân Hàng</small>
           
-          {/* EDITABLE POOL NAME */}
           {poolId && isEditingName ? (
             <div style={{ display: "flex", alignItems: "center", gap: "10px", marginTop: "5px" }}>
               <input 
@@ -152,7 +191,6 @@ const QuestionList = () => {
       </div>
 
       <div style={{ display: 'flex', gap: '10px' }}>
-        {/* ADD THIS BUTTON */}
         <Link to="/admin/questions/import">
           <button className="btn btn-secondary">⬆ Nhập từ File</button>
         </Link>

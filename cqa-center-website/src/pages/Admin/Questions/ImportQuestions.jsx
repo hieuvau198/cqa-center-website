@@ -9,15 +9,13 @@ const ImportQuestions = () => {
   const [parsedQuestions, setParsedQuestions] = useState([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [logs, setLogs] = useState([]);
-  const [poolId, setPoolId] = useState(""); // Optional: Select a pool to import into
+  const [poolId, setPoolId] = useState("");
 
-  // Handle "Folder Upload"
   const handleFolderSelect = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
     setFileList(files);
 
-    // Find the HTML file
     const htmlFile = files.find(f => f.name.endsWith(".html") || f.name.endsWith(".htm"));
     
     if (!htmlFile) {
@@ -25,14 +23,48 @@ const ImportQuestions = () => {
       return;
     }
 
-    // Read and Parse HTML
     const text = await htmlFile.text();
     const questions = parseWordHtml(text);
     setParsedQuestions(questions);
     setLogs(prev => [...prev, `Đã tìm thấy ${questions.length} câu hỏi trong file ${htmlFile.name}`]);
   };
 
-  // The Main Import Process
+  // Helper to process a string (HTML), find images, and upload them
+  const processHtmlImages = async (htmlContent) => {
+    if (!htmlContent) return htmlContent;
+    
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlContent, "text/html");
+    const images = doc.querySelectorAll("img");
+
+    if (images.length === 0) return htmlContent;
+
+    const uploadPromises = Array.from(images).map(async (img) => {
+      const originalSrc = img.getAttribute("src");
+      if (!originalSrc || originalSrc.startsWith("http")) return; // Skip if already a URL
+
+      const cleanSrc = originalSrc.replace(/\\/g, "/"); 
+      
+      // Find file in the uploaded list
+      const matchingFile = fileList.find(f => {
+        const relPath = f.webkitRelativePath || f.name; 
+        return relPath.replace(/\\/g, "/").endsWith(cleanSrc);
+      });
+
+      if (matchingFile) {
+        try {
+          const downloadURL = await uploadFile(matchingFile, "question-images");
+          img.setAttribute("src", downloadURL);
+        } catch (err) {
+          console.error("Failed to upload image:", cleanSrc, err);
+        }
+      }
+    });
+
+    await Promise.all(uploadPromises);
+    return doc.body.innerHTML;
+  };
+
   const handleImport = async () => {
     if (parsedQuestions.length === 0) return;
     setIsProcessing(true);
@@ -47,53 +79,32 @@ const ImportQuestions = () => {
 
       try {
         // 1. Process Images in Content & Explanation
-        // We look for any 'src' in the content string that matches a file in our fileList
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(q.content + (q.explanation || ""), "text/html");
-        const images = doc.querySelectorAll("img");
+        q.content = await processHtmlImages(q.content);
+        q.explanation = await processHtmlImages(q.explanation || "");
 
-        const imageUploadPromises = Array.from(images).map(async (img) => {
-          const originalSrc = img.getAttribute("src");
-          if (!originalSrc) return;
+        // 2. Process Images in OPTIONS (Fix for missing option images)
+        if (q.options && q.options.length > 0) {
+          const processedOptions = await Promise.all(q.options.map(async (opt) => {
+            const newContent = await processHtmlImages(opt.content);
+            return { ...opt, content: newContent };
+          }));
+          q.options = processedOptions;
+        }
 
-          // File paths in HTML usually look like "file-test-math-2_files/image001.png"
-          // We search the uploaded fileList for a file ending with that path segment
-          // We normalize slashes for cross-platform compatibility
-          const cleanSrc = originalSrc.replace(/\\/g, "/"); 
-          
-          const matchingFile = fileList.find(f => {
-            // Check if file path ends with the src path (handling subdirectories)
-            // f.webkitRelativePath contains "folder/sub/image.png"
-            const relPath = f.webkitRelativePath || f.name; 
-            return relPath.replace(/\\/g, "/").endsWith(cleanSrc);
-          });
-
-          if (matchingFile) {
-            const downloadURL = await uploadFile(matchingFile, "question-images");
-            // Replace in the actual Question Object strings
-            q.content = q.content.replace(originalSrc, downloadURL);
-            if (q.explanation) {
-              q.explanation = q.explanation.replace(originalSrc, downloadURL);
-            }
-          }
-        });
-
-        await Promise.all(imageUploadPromises);
-
-        // 2. Prepare Final Data Object
+        // 3. Prepare Data
         const newQuestionData = {
           name: q.name,
           content: q.content,
           type: q.type,
-          options: q.options, // Assuming options are simple or parsed
+          options: q.options,
           correctAnswer: q.correctAnswer,
           explanation: q.explanation || "",
-          poolId: poolId || "", // Optional link to a bank
+          poolId: poolId || "",
           tagIds: [],
           createdAt: new Date().toISOString()
         };
 
-        // 3. Save to Firestore
+        // 4. Save
         await addQuestion(newQuestionData);
         successCount++;
         setLogs(prev => [...prev, `-> Đã nhập thành công: ${q.name}`]);
@@ -106,7 +117,7 @@ const ImportQuestions = () => {
 
     setIsProcessing(false);
     alert(`Hoàn tất! Đã nhập thành công ${successCount}/${total} câu hỏi.`);
-    navigate("/admin/questions"); // Go back to list
+    navigate("/admin/questions");
   };
 
   return (
@@ -129,7 +140,6 @@ const ImportQuestions = () => {
         {parsedQuestions.length > 0 && (
           <div style={{ marginTop: "20px" }}>
             <p><strong>Tìm thấy:</strong> {parsedQuestions.length} câu hỏi.</p>
-            
             <button 
               onClick={handleImport} 
               disabled={isProcessing}

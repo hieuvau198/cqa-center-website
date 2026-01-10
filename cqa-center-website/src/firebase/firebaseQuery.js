@@ -2,7 +2,7 @@
 import { db, auth, googleProvider, storage } from "./firebase-config";
 import { collection, getDocs, addDoc, deleteDoc, doc, setDoc, updateDoc, getDoc, query, where } from "firebase/firestore";
 import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage"; // Storage imports
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage"; // <--- Added deleteObject
 
 // --- FIX: Export these so components can import them from this file ---
 export { db, auth, googleProvider }; 
@@ -19,6 +19,20 @@ export const uploadFile = async (file, path = "uploads") => {
   } catch (error) {
     console.error("Error uploading file:", error);
     throw error;
+  }
+};
+
+// --- NEW: Function to delete file from storage ---
+export const deleteFile = async (fileUrl) => {
+  if (!fileUrl) return;
+  try {
+    // Create a reference from the full URL
+    const fileRef = ref(storage, fileUrl);
+    await deleteObject(fileRef);
+    console.log("Deleted file:", fileUrl);
+  } catch (error) {
+    console.warn("Error deleting file (might not exist):", fileUrl, error);
+    // We do not throw error here to allow the main delete operation to proceed
   }
 };
 //#endregion
@@ -62,7 +76,6 @@ export const updatePool = async (id, name) => {
     throw error;
   }
 };
-
 //#endregion
 
 //#region QUESTIONs
@@ -246,7 +259,6 @@ export const getPracticeByCode = async (entryCode) => {
   }
 };
 
-// --- NEW: Required for PracticeAttempt ---
 export const getPracticeById = async (id) => {
   try {
     const docSnap = await getDoc(doc(db, "practices", id));
@@ -377,8 +389,6 @@ export const getUserProfile = async (uid) => {
 export const updateUserProfile = async (uid, data) => {
   try {
     const userRef = doc(db, "users", uid);
-    // setDoc with { merge: true } creates the document if it doesn't exist
-    // or updates specific fields if it does.
     await setDoc(userRef, data, { merge: true }); 
   } catch (error) {
     console.error("Error updating profile:", error);
