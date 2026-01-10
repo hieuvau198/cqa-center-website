@@ -151,6 +151,17 @@ const QuestionList = () => {
         </Link>
       </div>
 
+      <div style={{ display: 'flex', gap: '10px' }}>
+        {/* ADD THIS BUTTON */}
+        <Link to="/admin/questions/import">
+          <button className="btn btn-secondary">⬆ Nhập từ File</button>
+        </Link>
+        
+        <Link to="/admin/questions/new">
+          <button className="btn btn-primary">+ Tạo Câu Hỏi Mới</button>
+        </Link>
+      </div>
+
       {/* SEARCH & FILTERS BAR */}
       <div className="section-box">
         <div className="form-row" style={{ alignItems: "center", marginBottom: "15px" }}>

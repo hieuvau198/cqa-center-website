@@ -16,6 +16,7 @@ import TestForm from "./pages/Admin/Tests/TestForm";
 import PracticeManager from "./pages/Admin/Practices/PracticeManager";
 import AdminProfile from "./pages/Admin/Profile/AdminProfile";   
 import PoolList from "./pages/Admin/Questions/PoolList";
+import ImportQuestions from "./pages/Admin/Questions/ImportQuestions";
 
 // Student Pages
 import StudentHome from "./pages/Student/StudentHome";
@@ -39,6 +40,7 @@ function App() {
           <Route path="questions/pool/:poolId" element={<QuestionList />} /> 
           <Route path="questions/new" element={<QuestionForm />} />
           <Route path="questions/edit/:id" element={<QuestionForm />} /> 
+          <Route path="questions/import" element={<ImportQuestions />} />
           <Route path="tags" element={<TagList />} />
           <Route path="tests" element={<TestList />} />
           <Route path="tests/new" element={<TestForm />} />

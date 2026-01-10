@@ -1,10 +1,27 @@
 // src/firebase/firebaseQuery.js
-import { db, auth, googleProvider } from "./firebase-config";
+import { db, auth, googleProvider, storage } from "./firebase-config";
 import { collection, getDocs, addDoc, deleteDoc, doc, setDoc, updateDoc, getDoc, query, where } from "firebase/firestore";
 import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage"; // Storage imports
 
 // --- FIX: Export these so components can import them from this file ---
 export { db, auth, googleProvider }; 
+
+//#region STORAGE
+export const uploadFile = async (file, path = "uploads") => {
+  try {
+    // Create a unique filename to prevent overwrites
+    const uniqueName = `${Date.now()}_${file.name}`;
+    const storageRef = ref(storage, `${path}/${uniqueName}`);
+    const snapshot = await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(snapshot.ref);
+    return downloadURL;
+  } catch (error) {
+    console.error("Error uploading file:", error);
+    throw error;
+  }
+};
+//#endregion
 
 //#region Path References
 const questionsRef = collection(db, "questions");
