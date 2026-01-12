@@ -8,14 +8,15 @@ import {
   getAllTags, 
   updateQuestion,
   updatePool,
-  deleteFile // <--- Import deleteFile
+  deleteFile 
 } from "../../../firebase/firebaseQuery";
 
 const TYPE_LABELS = {
   "MC_SINGLE": "Trắc nghiệm (1 đáp án)",
   "MC_MULTI": "Trắc nghiệm (Nhiều đáp án)",
   "MATCHING": "Nối cặp",
-  "WRITING": "Tự luận"
+  "WRITING": "Tự luận",
+  "MC_SINGLE_HTML": "Trắc nghiệm (HTML)"
 };
 
 const QuestionList = () => {
@@ -77,7 +78,7 @@ const QuestionList = () => {
 
   // Helper to find image URLs in HTML content
   const extractImageUrls = (htmlString) => {
-    if (!htmlString) return [];
+    if (!htmlString || typeof htmlString !== 'string') return [];
     // Regex to match src="..." where the url contains firebase storage
     const regex = /<img[^>]+src="([^">]+)"/g;
     const urls = [];
@@ -91,20 +92,45 @@ const QuestionList = () => {
   };
 
   const handleDelete = async (id) => {
-    if(confirm("Bạn có chắc chắn muốn xóa vĩnh viễn câu hỏi này không?")) {
+    if(confirm("Bạn có chắc chắn muốn xóa vĩnh viễn câu hỏi này không? Hành động này sẽ xóa cả ảnh đi kèm.")) {
       try {
         // 1. Find the question data to get image URLs
         const questionToDelete = allQuestions.find(q => q.id === id);
         
         if (questionToDelete) {
-          // 2. Extract URLs from Content and Explanation
+          console.log("Processing deletion for:", questionToDelete);
+
+          // 2. Extract URLs from various fields
           const contentImages = extractImageUrls(questionToDelete.content);
           const explanationImages = extractImageUrls(questionToDelete.explanation);
-          const allImages = [...new Set([...contentImages, ...explanationImages])]; // Unique URLs
+          
+          // -- Extract from Answers --
+          let answerImages = [];
+          if (questionToDelete.answers && Array.isArray(questionToDelete.answers)) {
+            questionToDelete.answers.forEach(ans => {
+              // Check content (HTML mode) and name (sometimes used for text/html)
+              const imgsContent = extractImageUrls(ans.content);
+              const imgsName = extractImageUrls(ans.name);
+              // Also check if there is an explicit imageUrl field on the answer object
+              if (ans.imageUrl && ans.imageUrl.includes("firebasestorage.googleapis.com")) {
+                answerImages.push(ans.imageUrl);
+              }
+              answerImages = [...answerImages, ...imgsContent, ...imgsName];
+            });
+          }
+
+          // -- Extract Main Question Image (if any) --
+          let mainImage = [];
+          if (questionToDelete.imageUrl && questionToDelete.imageUrl.includes("firebasestorage.googleapis.com")) {
+            mainImage.push(questionToDelete.imageUrl);
+          }
+
+          // Combine all unique URLs
+          const allImages = [...new Set([...contentImages, ...explanationImages, ...answerImages, ...mainImage])];
 
           // 3. Delete files from Storage
           if (allImages.length > 0) {
-            console.log("Deleting images...", allImages);
+            console.log("Deleting associated images:", allImages);
             await Promise.all(allImages.map(url => deleteFile(url)));
           }
         }
@@ -115,10 +141,11 @@ const QuestionList = () => {
         // 5. Update UI
         setPoolQuestions(poolQuestions.filter(q => q.id !== id));
         setAllQuestions(allQuestions.filter(q => q.id !== id));
+        alert("Đã xóa câu hỏi và các hình ảnh liên quan.");
 
       } catch (error) {
         console.error("Error deleting question or images:", error);
-        alert("Có lỗi xảy ra khi xóa câu hỏi.");
+        alert("Có lỗi xảy ra khi xóa câu hỏi: " + error.message);
       }
     }
   };

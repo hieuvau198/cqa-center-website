@@ -1,9 +1,10 @@
 // src/pages/Admin/Questions/QuestionForm.jsx
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { addQuestion, updateQuestion, getQuestionById, getAllTags, getAllPools } from "../../../firebase/firebaseQuery";
+// Ensure deleteFile and uploadFile are imported
+import { addQuestion, updateQuestion, getQuestionById, getAllTags, getAllPools, uploadFile, deleteFile } from "../../../firebase/firebaseQuery";
 import QuestionPreview from "../../../components/QuestionPreview";
-import HtmlQuestionEditor from "./components/HtmlQuestionEditor"; // Import the new component
+import HtmlQuestionEditor from "./components/HtmlQuestionEditor";
 
 const QuestionForm = () => {
   const navigate = useNavigate();
@@ -27,6 +28,11 @@ const QuestionForm = () => {
   const [answers, setAnswers] = useState([
     { name: "", description: "", imageUrl: "", isCorrect: false }
   ]);
+
+  // --- NEW: State to track pending image operations ---
+  const [pendingUploads, setPendingUploads] = useState([]); // Array of { tempUrl, file }
+  const [pendingDeletes, setPendingDeletes] = useState(new Set()); // Set of URLs
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     const init = async () => {
@@ -55,6 +61,23 @@ const QuestionForm = () => {
     init();
   }, [id, isEditMode]);
 
+  // --- NEW: Handler passed to HtmlQuestionEditor ---
+  const handleImageReplace = (file, oldSrc, tempUrl) => {
+    // 1. Manage Upload Queue
+    setPendingUploads(prev => {
+      // If we are replacing an image that was just added (blob URL) but not saved yet,
+      // we remove the old blob from the upload queue to prevent uploading unused files.
+      const filtered = prev.filter(p => p.tempUrl !== oldSrc);
+      return [...filtered, { tempUrl, file }];
+    });
+
+    // 2. Manage Delete Queue
+    // We only want to delete images that exist on the server (not blob: URLs)
+    if (oldSrc && !oldSrc.startsWith("blob:")) {
+      setPendingDeletes(prev => new Set(prev).add(oldSrc));
+    }
+  };
+
   const handleToggleTag = (tagId) => {
     if (selectedTagIds.includes(tagId)) {
       setSelectedTagIds(selectedTagIds.filter(id => id !== tagId));
@@ -64,8 +87,6 @@ const QuestionForm = () => {
   };
 
   const handleTypeChange = (newType) => {
-    // This function will effectively only run in "Create Mode" now, 
-    // because the input is disabled in Edit Mode.
     if(confirm("Thay đổi loại câu hỏi có thể ảnh hưởng đến dữ liệu câu trả lời. Tiếp tục?")) {
       setFormData({ ...formData, type: newType });
       
@@ -99,23 +120,68 @@ const QuestionForm = () => {
     e.preventDefault();
     if (answers.length === 0 && !formData.content) return alert("Vui lòng thêm ít nhất một câu trả lời.");
 
-    const payload = { 
-      ...formData, 
-      tagIds: selectedTagIds, 
-      answers: answers.map(ans => ({
-        ...ans, 
-        isCorrect: (formData.type === "MATCHING" || formData.type === "WRITING") ? true : ans.isCorrect
-      }))
-    };
+    setIsSaving(true);
+    try {
+      // --- 1. Process Pending Deletes ---
+      if (pendingDeletes.size > 0) {
+        console.log("Deleting old images:", pendingDeletes);
+        await Promise.all(Array.from(pendingDeletes).map(url => deleteFile(url)));
+      }
 
-    if (isEditMode) {
-      await updateQuestion(id, payload);
-      alert("Đã cập nhật câu hỏi!");
-    } else {
-      await addQuestion(payload);
-      alert("Đã tạo câu hỏi!");
+      // --- 2. Process Pending Uploads & Replace URLs in Content ---
+      let finalContent = formData.content;
+      let finalExplanation = formData.explanation;
+      let finalAnswers = [...answers];
+
+      if (pendingUploads.length > 0) {
+        console.log(`Uploading ${pendingUploads.length} new images...`);
+        
+        await Promise.all(pendingUploads.map(async ({ file, tempUrl }) => {
+          // Upload file
+          const realUrl = await uploadFile(file, "question-images");
+          
+          // Replace ALL instances of the blob URL with the real Firebase URL
+          // We do this for Content, Explanation, and all Answers
+          if (finalContent) finalContent = finalContent.replaceAll(tempUrl, realUrl);
+          if (finalExplanation) finalExplanation = finalExplanation.replaceAll(tempUrl, realUrl);
+          
+          finalAnswers = finalAnswers.map(ans => {
+            let ansContent = ans.content || ans.name;
+            if (ansContent && typeof ansContent === 'string') {
+              ansContent = ansContent.replaceAll(tempUrl, realUrl);
+            }
+            return { ...ans, content: ansContent, name: ansContent };
+          });
+        }));
+      }
+
+      // --- 3. Save to Firestore ---
+      const payload = { 
+        ...formData,
+        content: finalContent,
+        explanation: finalExplanation,
+        tagIds: selectedTagIds, 
+        answers: finalAnswers.map(ans => ({
+          ...ans, 
+          isCorrect: (formData.type === "MATCHING" || formData.type === "WRITING") ? true : ans.isCorrect
+        }))
+      };
+
+      if (isEditMode) {
+        await updateQuestion(id, payload);
+        alert("Đã cập nhật câu hỏi thành công!");
+      } else {
+        await addQuestion(payload);
+        alert("Đã tạo câu hỏi thành công!");
+      }
+      navigate(-1);
+
+    } catch (error) {
+      console.error("Save error:", error);
+      alert("Có lỗi xảy ra khi lưu: " + error.message);
+    } finally {
+      setIsSaving(false);
     }
-    navigate(-1);
   };
 
   const isHtmlMode = formData.type === "MC_SINGLE_HTML";
@@ -139,7 +205,7 @@ const QuestionForm = () => {
                   className="form-select" 
                   value={formData.type} 
                   onChange={e => handleTypeChange(e.target.value)}
-                  disabled={isEditMode} // DISABLED IN EDIT MODE
+                  disabled={isEditMode}
                   style={isEditMode ? { background: "#eee", cursor: "not-allowed" } : {}}
                 >
                   <option value="MC_SINGLE">Trắc nghiệm (1 đáp án)</option>
@@ -157,7 +223,7 @@ const QuestionForm = () => {
               className="form-select" 
               value={formData.poolId} 
               onChange={e => setFormData({...formData, poolId: e.target.value})}
-              disabled={isEditMode} // DISABLED IN EDIT MODE
+              disabled={isEditMode}
               style={isEditMode ? { background: "#eee", cursor: "not-allowed" } : {}}
             >
               <option value="">-- Chưa phân loại --</option>
@@ -189,6 +255,7 @@ const QuestionForm = () => {
               answers={answers}
               onUpdateForm={setFormData}
               onUpdateAnswers={setAnswers}
+              onImageReplace={handleImageReplace} // Pass the handler
             />
           ) : (
             // STANDARD EDITOR
@@ -197,7 +264,6 @@ const QuestionForm = () => {
                 <label>Nội dung câu hỏi (Text/HTML)</label>
                 <textarea 
                   className="form-textarea" 
-                  // Removed dark theme styles
                   style={{ fontFamily: "monospace", fontSize: "0.95rem", height: "100px", color: "#000", background: "#fff" }}
                   value={formData.content} 
                   onChange={e => setFormData({...formData, content: e.target.value})} 
@@ -238,9 +304,9 @@ const QuestionForm = () => {
           )}
 
           <div className="form-actions-right" style={{ marginTop: "20px" }}>
-            <button type="button" onClick={() => navigate(-1)} className="btn btn-secondary">Hủy</button>
-            <button type="submit" className="btn btn-primary" style={{ padding: "10px 30px" }}>
-              {isEditMode ? "Lưu Thay Đổi" : "Tạo Câu Hỏi"}
+            <button type="button" onClick={() => navigate(-1)} className="btn btn-secondary" disabled={isSaving}>Hủy</button>
+            <button type="submit" className="btn btn-primary" style={{ padding: "10px 30px" }} disabled={isSaving}>
+              {isSaving ? "Đang xử lý ảnh & Lưu..." : (isEditMode ? "Lưu Thay Đổi" : "Tạo Câu Hỏi")}
             </button>
           </div>
         </form>
@@ -261,7 +327,7 @@ const QuestionForm = () => {
            />
            {isHtmlMode && (
              <div className="info-box" style={{ marginTop: "15px", fontSize: "0.85rem", color: "#666" }}>
-               ℹ️ Chế độ HTML Import: Hình ảnh được hiển thị trực tiếp. Bạn có thể thay đổi ảnh bằng cách click vào ảnh trong khung chỉnh sửa bên trái.
+               ℹ️ Chế độ HTML Import: Hình ảnh được hiển thị trực tiếp. Bạn có thể thay đổi ảnh bằng cách click vào ảnh trong khung chỉnh sửa bên trái. Thay đổi sẽ chỉ được lưu khi bạn bấm nút "Lưu".
              </div>
            )}
         </div>
