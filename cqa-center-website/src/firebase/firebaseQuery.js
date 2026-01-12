@@ -207,28 +207,17 @@ export const updateTest = async (id, data) => {
   }
 };
 
-// UPDATED: Now deletes all child practices before deleting the test
 export const deleteTest = async (id) => {
   try {
-    // 1. Find all practices linked to this test
     const q = query(practicesRef, where("testId", "==", id));
     const practiceSnapshot = await getDocs(q);
 
-    // 2. Delete each practice found (which effectively triggers practice deletion logic if we were calling the function, but here we do raw delete. 
-    // Ideally, we should also delete attempts for these practices, but for now this cleans up the structure)
-    // To be perfectly clean, we should replicate the logic of deletePractice here or iterate.
-    // For simplicity in this scope:
     for (const practiceDoc of practiceSnapshot.docs) {
-        // Delete attempts for this practice
         const attemptsQ = query(attemptsRef, where("practiceId", "==", practiceDoc.id));
         const attemptsSnap = await getDocs(attemptsQ);
         await Promise.all(attemptsSnap.docs.map(a => deleteDoc(a.ref)));
-        
-        // Delete the practice
         await deleteDoc(practiceDoc.ref);
     }
-
-    // 3. Delete the test itself
     await deleteDoc(doc(db, "tests", id));
   } catch (error) {
     console.error("Error deleting test and its practices:", error);
@@ -306,20 +295,14 @@ export const updatePractice = async (id, practiceData) => {
   }
 };
 
-// UPDATED: Now deletes all attempts linked to the practice before deleting the practice
 export const deletePractice = async (id) => {
   try {
-    // 1. Find all attempts linked to this practice
     const q = query(attemptsRef, where("practiceId", "==", id));
     const attemptSnapshot = await getDocs(q);
-
-    // 2. Delete each attempt found
     const deletePromises = attemptSnapshot.docs.map(attemptDoc => 
       deleteDoc(attemptDoc.ref)
     );
     await Promise.all(deletePromises);
-
-    // 3. Delete the practice itself
     await deleteDoc(doc(db, "practices", id));
   } catch (error) {
     console.error("Error deleting practice and its attempts:", error);
@@ -328,7 +311,7 @@ export const deletePractice = async (id) => {
 };
 //#endregion
 
-//#region TAGs
+//#region TAGs (UPDATED for Hierarchy)
 export const getAllTags = async () => {
   try {
     const snapshot = await getDocs(tagsRef);
@@ -339,9 +322,13 @@ export const getAllTags = async () => {
   }
 };
 
-export const addTag = async (tagName) => {
+// Updated: Accepts optional parentId
+export const addTag = async (tagName, parentId = null) => {
   try {
-    return await addDoc(tagsRef, { name: tagName });
+    return await addDoc(tagsRef, { 
+      name: tagName, 
+      parentId: parentId || null 
+    });
   } catch (error) {
     console.error("Error adding tag:", error);
     throw error;
@@ -368,9 +355,7 @@ export const deleteTag = async (id) => {
 };
 //#endregion
 
-//#region USER MANAGEMENT (New)
-
-// 1. Get All Users
+//#region USER MANAGEMENT
 export const getAllUsers = async () => {
   try {
     const snapshot = await getDocs(usersRef);
@@ -381,7 +366,6 @@ export const getAllUsers = async () => {
   }
 };
 
-// 2. Get Single User
 export const getUserById = async (id) => {
   try {
     const docRef = doc(db, "users", id);
@@ -394,7 +378,6 @@ export const getUserById = async (id) => {
   }
 };
 
-// 3. Create User (Admin Action)
 export const createSystemUser = async (userData) => {
   const { username, password, role, name } = userData;
   const email = username.includes("@") ? username : `${username}${SYSTEM_DOMAIN}`;
@@ -421,7 +404,6 @@ export const createSystemUser = async (userData) => {
   }
 };
 
-// 4. Update User
 export const updateUser = async (id, data) => {
   try {
     const docRef = doc(db, "users", id);
@@ -432,7 +414,6 @@ export const updateUser = async (id, data) => {
   }
 };
 
-// 5. Delete User
 export const deleteUser = async (id) => {
   try {
     await deleteDoc(doc(db, "users", id));
