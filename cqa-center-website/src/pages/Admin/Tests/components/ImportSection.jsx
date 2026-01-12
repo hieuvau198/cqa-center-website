@@ -1,5 +1,5 @@
 import React from 'react';
-import QuestionPreview from "../../../components/QuestionPreview";
+import QuestionPreview from '../../../../components/QuestionPreview';
 
 const ImportSection = ({ 
     newQuestions, onFolderSelect, pools, selectedPoolId, onPoolChange, 

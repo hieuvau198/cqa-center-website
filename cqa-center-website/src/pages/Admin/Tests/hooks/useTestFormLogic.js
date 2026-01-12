@@ -4,8 +4,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { 
   addTest, updateTest, getTestById, getAllQuestions, getAllTags, getAllPools,
   addQuestion, uploadFile 
-} from "../../../firebase/firebaseQuery";
-import { parseWordHtml } from "../../../utils/htmlParser";
+} from "../../../../firebase/firebaseQuery";
+import { parseWordHtml } from "../../../../utils/htmlParser";
 
 export const useTestFormLogic = () => {
   const navigate = useNavigate();

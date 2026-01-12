@@ -10,6 +10,7 @@ import {
   updatePool,
   deleteFile 
 } from "../../../firebase/firebaseQuery";
+import TagTreeSelector from "../Tests/components/TagTreeSelector"; //
 
 const TYPE_LABELS = {
   "MC_SINGLE": "Trắc nghiệm (1 đáp án)",
@@ -31,10 +32,14 @@ const QuestionList = () => {
   // UI / Filter State
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTags, setSelectedTags] = useState([]);
+  const [isTagFilterOpen, setIsTagFilterOpen] = useState(false); // To toggle tree view
 
   // Edit Name State
   const [isEditingName, setIsEditingName] = useState(false);
   const [editName, setEditName] = useState("");
+
+  // Bulk Action State
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -79,7 +84,6 @@ const QuestionList = () => {
   // Helper to find image URLs in HTML content
   const extractImageUrls = (htmlString) => {
     if (!htmlString || typeof htmlString !== 'string') return [];
-    // Regex to match src="..." where the url contains firebase storage
     const regex = /<img[^>]+src="([^">]+)"/g;
     const urls = [];
     let match;
@@ -91,62 +95,69 @@ const QuestionList = () => {
     return urls;
   };
 
-  const handleDelete = async (id) => {
-    if(confirm("Bạn có chắc chắn muốn xóa vĩnh viễn câu hỏi này không? Hành động này sẽ xóa cả ảnh đi kèm.")) {
-      try {
-        // 1. Find the question data to get image URLs
-        const questionToDelete = allQuestions.find(q => q.id === id);
-        
-        if (questionToDelete) {
-          console.log("Processing deletion for:", questionToDelete);
-
-          // 2. Extract URLs from various fields
-          const contentImages = extractImageUrls(questionToDelete.content);
-          const explanationImages = extractImageUrls(questionToDelete.explanation);
-          
-          // -- Extract from Answers --
-          let answerImages = [];
-          if (questionToDelete.answers && Array.isArray(questionToDelete.answers)) {
-            questionToDelete.answers.forEach(ans => {
-              // Check content (HTML mode) and name (sometimes used for text/html)
-              const imgsContent = extractImageUrls(ans.content);
-              const imgsName = extractImageUrls(ans.name);
-              // Also check if there is an explicit imageUrl field on the answer object
-              if (ans.imageUrl && ans.imageUrl.includes("firebasestorage.googleapis.com")) {
-                answerImages.push(ans.imageUrl);
-              }
-              answerImages = [...answerImages, ...imgsContent, ...imgsName];
-            });
+  const collectImagesForQuestions = (questions) => {
+    let allImages = [];
+    questions.forEach(q => {
+      const contentImages = extractImageUrls(q.content);
+      const explanationImages = extractImageUrls(q.explanation);
+      
+      let answerImages = [];
+      if (q.answers && Array.isArray(q.answers)) {
+        q.answers.forEach(ans => {
+          const imgsContent = extractImageUrls(ans.content);
+          const imgsName = extractImageUrls(ans.name);
+          if (ans.imageUrl && ans.imageUrl.includes("firebasestorage.googleapis.com")) {
+            answerImages.push(ans.imageUrl);
           }
-
-          // -- Extract Main Question Image (if any) --
-          let mainImage = [];
-          if (questionToDelete.imageUrl && questionToDelete.imageUrl.includes("firebasestorage.googleapis.com")) {
-            mainImage.push(questionToDelete.imageUrl);
-          }
-
-          // Combine all unique URLs
-          const allImages = [...new Set([...contentImages, ...explanationImages, ...answerImages, ...mainImage])];
-
-          // 3. Delete files from Storage
-          if (allImages.length > 0) {
-            console.log("Deleting associated images:", allImages);
-            await Promise.all(allImages.map(url => deleteFile(url)));
-          }
-        }
-
-        // 4. Delete document from Firestore
-        await deleteQuestion(id);
-        
-        // 5. Update UI
-        setPoolQuestions(poolQuestions.filter(q => q.id !== id));
-        setAllQuestions(allQuestions.filter(q => q.id !== id));
-        alert("Đã xóa câu hỏi và các hình ảnh liên quan.");
-
-      } catch (error) {
-        console.error("Error deleting question or images:", error);
-        alert("Có lỗi xảy ra khi xóa câu hỏi: " + error.message);
+          answerImages = [...answerImages, ...imgsContent, ...imgsName];
+        });
       }
+
+      let mainImage = [];
+      if (q.imageUrl && q.imageUrl.includes("firebasestorage.googleapis.com")) {
+        mainImage.push(q.imageUrl);
+      }
+      allImages = [...allImages, ...contentImages, ...explanationImages, ...answerImages, ...mainImage];
+    });
+    return [...new Set(allImages)];
+  };
+
+  const handleDelete = async (id) => {
+    if(confirm("Bạn có chắc chắn muốn xóa vĩnh viễn câu hỏi này không?")) {
+      await performDelete([id]);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedQuestionIds.length === 0) return;
+    if(confirm(`Bạn có chắc chắn muốn xóa ${selectedQuestionIds.length} câu hỏi đã chọn?`)) {
+      await performDelete(selectedQuestionIds);
+      setSelectedQuestionIds([]);
+    }
+  };
+
+  const performDelete = async (idsToDelete) => {
+    try {
+      const questionsToDelete = allQuestions.filter(q => idsToDelete.includes(q.id));
+      
+      // 1. Collect and Delete Images
+      const imagesToDelete = collectImagesForQuestions(questionsToDelete);
+      if (imagesToDelete.length > 0) {
+        console.log("Deleting images:", imagesToDelete.length);
+        await Promise.all(imagesToDelete.map(url => deleteFile(url)));
+      }
+
+      // 2. Delete Questions form DB
+      await Promise.all(idsToDelete.map(id => deleteQuestion(id)));
+
+      // 3. Update UI
+      setPoolQuestions(prev => prev.filter(q => !idsToDelete.includes(q.id)));
+      setAllQuestions(prev => prev.filter(q => !idsToDelete.includes(q.id)));
+      
+      alert(`Đã xóa ${idsToDelete.length} câu hỏi thành công.`);
+    } catch (error) {
+      console.error("Delete error:", error);
+      alert("Lỗi khi xóa: " + error.message);
     }
   };
 
@@ -169,9 +180,31 @@ const QuestionList = () => {
     }
   };
 
+  const handleSelectQuestion = (id) => {
+    if (selectedQuestionIds.includes(id)) {
+      setSelectedQuestionIds(prev => prev.filter(i => i !== id));
+    } else {
+      setSelectedQuestionIds(prev => [...prev, id]);
+    }
+  };
+
+  const handleSelectAll = (filteredList) => {
+    const allIds = filteredList.map(q => q.id);
+    // If all currently shown are selected, deselect all. Otherwise, select all.
+    const isAllSelected = allIds.every(id => selectedQuestionIds.includes(id));
+    if (isAllSelected) {
+      setSelectedQuestionIds(prev => prev.filter(id => !allIds.includes(id)));
+    } else {
+      // Merge unique IDs
+      const newSelected = [...new Set([...selectedQuestionIds, ...allIds])];
+      setSelectedQuestionIds(newSelected);
+    }
+  };
+
   const filteredAllQuestions = allQuestions.filter(q => {
     const nameMatch = q.name.toLowerCase().includes(searchTerm.toLowerCase());
     const qTags = q.tagIds || [];
+    // If no tags selected, match all. If tags selected, question MUST have all selected tags.
     const tagsMatch = selectedTags.length === 0 || selectedTags.every(t => qTags.includes(t));
     return nameMatch && tagsMatch;
   });
@@ -212,23 +245,30 @@ const QuestionList = () => {
           )}
 
         </div>
-        <Link to="/admin/questions/new">
-          <button className="btn btn-primary">+ Tạo Câu Hỏi Mới</button>
-        </Link>
+        <div style={{ display: 'flex', gap: '10px' }}>
+            {selectedQuestionIds.length > 0 && (
+                 <button 
+                    onClick={handleBulkDelete} 
+                    className="btn btn-danger"
+                    style={{ animation: "fadeIn 0.2s" }}
+                 >
+                    🗑 Xóa ({selectedQuestionIds.length}) mục
+                 </button>
+            )}
+            <Link to="/admin/questions/new">
+                <button className="btn btn-primary">+ Tạo Câu Hỏi Mới</button>
+            </Link>
+        </div>
       </div>
 
-      <div style={{ display: 'flex', gap: '10px' }}>
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
         <Link to="/admin/questions/import">
           <button className="btn btn-secondary">⬆ Nhập từ File</button>
-        </Link>
-        
-        <Link to="/admin/questions/new">
-          <button className="btn btn-primary">+ Tạo Câu Hỏi Mới</button>
         </Link>
       </div>
 
       {/* SEARCH & FILTERS BAR */}
-      <div className="section-box">
+      <div className="section-box" style={{ position: "relative" }}>
         <div className="form-row" style={{ alignItems: "center", marginBottom: "15px" }}>
           <input 
             className="form-input" 
@@ -237,25 +277,25 @@ const QuestionList = () => {
             onChange={e => setSearchTerm(e.target.value)}
             style={{ flex: 1 }}
           />
+          <button 
+            className="btn btn-secondary" 
+            onClick={() => setIsTagFilterOpen(!isTagFilterOpen)}
+          >
+            {isTagFilterOpen ? "Ẩn bộ lọc thẻ ▲" : "Lọc theo thẻ ▼"}
+          </button>
         </div>
         
-        <div className="filter-bar">
-          <span style={{ fontSize: "0.9rem", fontWeight: "bold" }}>Lọc theo thẻ:</span>
-          {tags.map(tag => (
-            <button 
-              key={tag.id}
-              onClick={() => toggleTag(tag.id)}
-              className={`btn-filter ${selectedTags.includes(tag.id) ? 'active' : ''}`}
-            >
-              {tag.name}
-            </button>
-          ))}
-          {selectedTags.length > 0 && (
-            <button onClick={() => setSelectedTags([])} className="btn-filter-clear">
-              Xóa lọc
-            </button>
-          )}
-        </div>
+        {isTagFilterOpen && (
+            <div style={{ marginBottom: "15px", borderTop: "1px solid #eee", paddingTop: "10px" }}>
+                <span style={{ fontSize: "0.9rem", fontWeight: "bold", display: "block", marginBottom: "5px" }}>Chọn thẻ để lọc:</span>
+                <TagTreeSelector tags={tags} selectedIds={selectedTags} onToggle={toggleTag} />
+                {selectedTags.length > 0 && (
+                    <button onClick={() => setSelectedTags([])} className="btn-filter-clear" style={{ marginTop: "10px" }}>
+                        Xóa lọc ({selectedTags.length})
+                    </button>
+                )}
+            </div>
+        )}
       </div>
 
       {/* SPLIT VIEW (Only when inside a Pool) */}
@@ -292,10 +332,20 @@ const QuestionList = () => {
 
           {/* --- VIEW B: ALL QUESTIONS (SELECTOR) --- */}
           <div className="section-box">
-            <h3 style={{ borderBottom: "1px solid #ccc", paddingBottom: "10px", marginTop: 0 }}>
-              Chế độ xem B: Kho câu hỏi
-            </h3>
-            <div className="list-container" style={{ marginTop: "10px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #ccc", paddingBottom: "10px", marginBottom: "10px" }}>
+                 <h3 style={{ margin: 0 }}>Kho câu hỏi</h3>
+                 <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                    <input 
+                        type="checkbox" 
+                        id="selectAllB"
+                        onChange={() => handleSelectAll(filteredAllQuestions)}
+                        checked={filteredAllQuestions.length > 0 && filteredAllQuestions.every(q => selectedQuestionIds.includes(q.id))}
+                    />
+                    <label htmlFor="selectAllB" style={{ cursor: "pointer", userSelect: "none" }}>Chọn tất cả</label>
+                 </div>
+            </div>
+
+            <div className="list-container">
               {filteredAllQuestions.map(q => {
                 const isInCurrentPool = q.poolId === poolId;
                 
@@ -303,9 +353,16 @@ const QuestionList = () => {
                   <div 
                     key={q.id} 
                     className={`item-card ${isInCurrentPool ? 'card-dimmed' : ''}`}
-                    style={{ padding: "15px", marginBottom: "10px" }}
+                    style={{ padding: "10px 15px", marginBottom: "10px", display: "flex", gap: "10px" }}
                   >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "start" }}>
+                    <input 
+                        type="checkbox" 
+                        checked={selectedQuestionIds.includes(q.id)}
+                        onChange={() => handleSelectQuestion(q.id)}
+                        style={{ width: "18px", height: "18px", marginTop: "5px" }}
+                    />
+                    
+                    <div style={{ flex: 1, display: "flex", justifyContent: "space-between", alignItems: "start" }}>
                       <div>
                         <strong>{q.name}</strong>
                         <div style={{ display: "flex", gap: "5px", marginTop: "5px" }}>
@@ -345,20 +402,42 @@ const QuestionList = () => {
 
         </div>
       ) : (
-        /* FALLBACK VIEW */
+        /* FALLBACK VIEW (When not in a specific pool) */
         <div className="list-container">
-          {filteredAllQuestions.map(q => (
-            <div key={q.id} className="item-card">
-              <div className="item-header">
-                <h4>{q.name}</h4>
-                <div>
-                  <Link to={`/admin/questions/edit/${q.id}`}>
-                    <button className="btn-text">Sửa</button>
-                  </Link>
-                  <button onClick={() => handleDelete(q.id)} className="btn-text-delete">Xóa</button>
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "10px", gap: "10px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                    <input 
+                        type="checkbox" 
+                        id="selectAllMain"
+                        onChange={() => handleSelectAll(filteredAllQuestions)}
+                        checked={filteredAllQuestions.length > 0 && filteredAllQuestions.every(q => selectedQuestionIds.includes(q.id))}
+                        style={{ width: "18px", height: "18px" }}
+                    />
+                    <label htmlFor="selectAllMain" style={{ fontWeight: "bold", cursor: "pointer" }}>Chọn tất cả trang này</label>
                 </div>
+          </div>
+
+          {filteredAllQuestions.map(q => (
+            <div key={q.id} className="item-card" style={{ display: "flex", gap: "15px" }}>
+               <input 
+                    type="checkbox" 
+                    checked={selectedQuestionIds.includes(q.id)}
+                    onChange={() => handleSelectQuestion(q.id)}
+                    style={{ width: "18px", height: "18px", marginTop: "5px" }}
+                />
+              <div style={{ flex: 1 }}>
+                <div className="item-header">
+                    <h4>{q.name}</h4>
+                    <div>
+                    <Link to={`/admin/questions/edit/${q.id}`}>
+                        <button className="btn-text">Sửa</button>
+                    </Link>
+                    <button onClick={() => handleDelete(q.id)} className="btn-text-delete">Xóa</button>
+                    </div>
+                </div>
+                <p>{q.description}</p>
+                <small style={{ color: "#666" }}>{TYPE_LABELS[q.type]}</small>
               </div>
-              <p>{q.description}</p>
             </div>
           ))}
         </div>

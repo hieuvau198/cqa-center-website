@@ -1,10 +1,10 @@
-// src/pages/Admin/Questions/QuestionForm.jsx
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 // Ensure deleteFile and uploadFile are imported
 import { addQuestion, updateQuestion, getQuestionById, getAllTags, getAllPools, uploadFile, deleteFile } from "../../../firebase/firebaseQuery";
 import QuestionPreview from "../../../components/QuestionPreview";
 import HtmlQuestionEditor from "./components/HtmlQuestionEditor";
+import TagTreeSelector from "../Tests/components/TagTreeSelector"; // Import hierarchical selector
 
 const QuestionForm = () => {
   const navigate = useNavigate();
@@ -65,14 +65,11 @@ const QuestionForm = () => {
   const handleImageReplace = (file, oldSrc, tempUrl) => {
     // 1. Manage Upload Queue
     setPendingUploads(prev => {
-      // If we are replacing an image that was just added (blob URL) but not saved yet,
-      // we remove the old blob from the upload queue to prevent uploading unused files.
       const filtered = prev.filter(p => p.tempUrl !== oldSrc);
       return [...filtered, { tempUrl, file }];
     });
 
     // 2. Manage Delete Queue
-    // We only want to delete images that exist on the server (not blob: URLs)
     if (oldSrc && !oldSrc.startsWith("blob:")) {
       setPendingDeletes(prev => new Set(prev).add(oldSrc));
     }
@@ -124,7 +121,6 @@ const QuestionForm = () => {
     try {
       // --- 1. Process Pending Deletes ---
       if (pendingDeletes.size > 0) {
-        console.log("Deleting old images:", pendingDeletes);
         await Promise.all(Array.from(pendingDeletes).map(url => deleteFile(url)));
       }
 
@@ -134,14 +130,9 @@ const QuestionForm = () => {
       let finalAnswers = [...answers];
 
       if (pendingUploads.length > 0) {
-        console.log(`Uploading ${pendingUploads.length} new images...`);
-        
         await Promise.all(pendingUploads.map(async ({ file, tempUrl }) => {
-          // Upload file
           const realUrl = await uploadFile(file, "question-images");
           
-          // Replace ALL instances of the blob URL with the real Firebase URL
-          // We do this for Content, Explanation, and all Answers
           if (finalContent) finalContent = finalContent.replaceAll(tempUrl, realUrl);
           if (finalExplanation) finalExplanation = finalExplanation.replaceAll(tempUrl, realUrl);
           
@@ -233,15 +224,15 @@ const QuestionForm = () => {
             </select>
           </div>
 
+          {/* UPDATED: Use TagTreeSelector instead of flat list */}
           <div className="section-box">
             <p className="section-title">Thẻ (Tags):</p>
-            <div className="tag-list">
-              {availableTags.map(tag => (
-                <label key={tag.id} className="tag-chip">
-                  <input type="checkbox" checked={selectedTagIds.includes(tag.id)} onChange={() => handleToggleTag(tag.id)} />
-                  {tag.name}
-                </label>
-              ))}
+            <div className="tag-list-wrapper">
+              <TagTreeSelector 
+                tags={availableTags} 
+                selectedIds={selectedTagIds} 
+                onToggle={handleToggleTag} 
+              />
             </div>
           </div>
 
@@ -255,7 +246,7 @@ const QuestionForm = () => {
               answers={answers}
               onUpdateForm={setFormData}
               onUpdateAnswers={setAnswers}
-              onImageReplace={handleImageReplace} // Pass the handler
+              onImageReplace={handleImageReplace} 
             />
           ) : (
             // STANDARD EDITOR
