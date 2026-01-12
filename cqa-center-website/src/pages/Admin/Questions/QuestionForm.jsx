@@ -2,7 +2,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { addQuestion, updateQuestion, getQuestionById, getAllTags, getAllPools } from "../../../firebase/firebaseQuery";
-import QuestionPreview from "../../../components/QuestionPreview"; // Import the component
+import QuestionPreview from "../../../components/QuestionPreview";
+import HtmlQuestionEditor from "./components/HtmlQuestionEditor"; // Import the new component
 
 const QuestionForm = () => {
   const navigate = useNavigate();
@@ -54,8 +55,6 @@ const QuestionForm = () => {
     init();
   }, [id, isEditMode]);
 
-  // ... (Handlers: handleToggleTag, handleTypeChange, handleAddOption, handleRemoveOption, handleAnswerChange, handleSubmit - NO CHANGES NEEDED)
-  
   const handleToggleTag = (tagId) => {
     if (selectedTagIds.includes(tagId)) {
       setSelectedTagIds(selectedTagIds.filter(id => id !== tagId));
@@ -65,12 +64,19 @@ const QuestionForm = () => {
   };
 
   const handleTypeChange = (newType) => {
-    if(confirm("Thay đổi loại câu hỏi sẽ đặt lại các câu trả lời. Tiếp tục?")) {
+    // This function will effectively only run in "Create Mode" now, 
+    // because the input is disabled in Edit Mode.
+    if(confirm("Thay đổi loại câu hỏi có thể ảnh hưởng đến dữ liệu câu trả lời. Tiếp tục?")) {
       setFormData({ ...formData, type: newType });
+      
       if (newType === "WRITING") {
         setAnswers([{ name: "", description: "", imageUrl: "", isCorrect: true }]);
+      } else if (newType === "MC_SINGLE_HTML") {
+        if (answers.length < 2) {
+          setAnswers(Array(4).fill(null).map(() => ({ name: "", content: "", isCorrect: false })));
+        }
       } else {
-        setAnswers([{ name: "", description: "", imageUrl: "", isCorrect: false }]);
+         if(answers.length === 0) setAnswers([{ name: "", description: "", imageUrl: "", isCorrect: false }]);
       }
     }
   };
@@ -112,52 +118,53 @@ const QuestionForm = () => {
     navigate(-1);
   };
 
+  const isHtmlMode = formData.type === "MC_SINGLE_HTML";
+
   return (
     <div className="admin-container" style={{ display: "flex", gap: "20px" }}>
       
-      {/* LEFT COLUMN: FORM - NO CHANGES */}
+      {/* LEFT COLUMN: FORM */}
       <div style={{ flex: 1, maxWidth: "60%" }}>
         <h2>{isEditMode ? "Chỉnh Sửa Câu Hỏi" : "Tạo Câu Hỏi Mới"}</h2>
         <form onSubmit={handleSubmit} className="form-column">
-          <div className="form-group">
-            <label>Tên câu hỏi (ID/Mã)</label>
-            <input className="form-input" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
-          </div>
-
-          <div className="form-group">
-            <label>Nội dung HTML (Dành cho câu hỏi nhập từ file)</label>
-            <textarea 
-              className="form-textarea" 
-              style={{ fontFamily: "monospace", fontSize: "0.85rem", height: "150px", background: "#2d2d2d", color: "#eee" }}
-              placeholder="<div>Nội dung HTML...</div>" 
-              value={formData.content} 
-              onChange={e => setFormData({...formData, content: e.target.value})} 
-            />
+          
+          <div style={{ display: "flex", gap: "10px" }}>
+             <div className="form-group" style={{ flex: 1 }}>
+                <label>Mã câu hỏi (Name/ID)</label>
+                <input className="form-input" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required />
+             </div>
+             <div className="form-group" style={{ flex: 1 }}>
+                <label>Loại câu hỏi</label>
+                <select 
+                  className="form-select" 
+                  value={formData.type} 
+                  onChange={e => handleTypeChange(e.target.value)}
+                  disabled={isEditMode} // DISABLED IN EDIT MODE
+                  style={isEditMode ? { background: "#eee", cursor: "not-allowed" } : {}}
+                >
+                  <option value="MC_SINGLE">Trắc nghiệm (1 đáp án)</option>
+                  <option value="MC_MULTI">Trắc nghiệm (Nhiều đáp án)</option>
+                  <option value="MC_SINGLE_HTML">Trắc nghiệm (HTML Import)</option>
+                  <option value="MATCHING">Nối cặp (Matching)</option>
+                  <option value="WRITING">Tự luận (Điền từ)</option>
+                </select>
+             </div>
           </div>
 
           <div className="form-group">
             <label>Ngân hàng / Thư mục</label>
-            <select className="form-select" value={formData.poolId} onChange={e => setFormData({...formData, poolId: e.target.value})}>
+            <select 
+              className="form-select" 
+              value={formData.poolId} 
+              onChange={e => setFormData({...formData, poolId: e.target.value})}
+              disabled={isEditMode} // DISABLED IN EDIT MODE
+              style={isEditMode ? { background: "#eee", cursor: "not-allowed" } : {}}
+            >
               <option value="">-- Chưa phân loại --</option>
               {availablePools.map(pool => (
                 <option key={pool.id} value={pool.id}>{pool.name}</option>
               ))}
             </select>
-          </div>
-
-          <div className="form-group">
-            <label>Loại câu hỏi</label>
-            <select className="form-select" value={formData.type} onChange={e => handleTypeChange(e.target.value)}>
-              <option value="MC_SINGLE">Trắc nghiệm (1 đáp án)</option>
-              <option value="MC_MULTI">Trắc nghiệm (Nhiều đáp án)</option>
-              <option value="MATCHING">Nối cặp (Matching)</option>
-              <option value="WRITING">Tự luận (Điền từ)</option>
-            </select>
-          </div>
-          
-          <div className="form-group">
-             <label>Giải thích đáp án (HTML hoặc Text)</label>
-             <textarea className="form-textarea" value={formData.explanation} onChange={e => setFormData({...formData, explanation: e.target.value})} />
           </div>
 
           <div className="section-box">
@@ -174,30 +181,60 @@ const QuestionForm = () => {
 
           <hr style={{ width: '100%', margin: "20px 0" }} />
 
-          {(formData.type === "MC_SINGLE" || formData.type === "MC_MULTI") && (
-            <div>
-              <h3>Các lựa chọn trả lời (Options)</h3>
-              {answers.map((ans, index) => (
-                <div key={index} className="box-dashed">
-                  <div className="form-row" style={{ alignItems: 'center' }}>
-                    <input 
-                      type="checkbox" 
-                      style={{ width: "20px", height: "20px", marginRight: "10px" }}
-                      checked={ans.isCorrect} 
-                      onChange={e => handleAnswerChange(index, 'isCorrect', e.target.checked)} 
-                    />
-                    <input 
-                      className="form-input" 
-                      placeholder={`Lựa chọn ${String.fromCharCode(65 + index)}`} 
-                      value={ans.name || ans.content || ""} 
-                      onChange={e => handleAnswerChange(index, 'name', e.target.value)} 
-                    />
-                    <button type="button" onClick={() => handleRemoveOption(index)} className="btn btn-danger" style={{ marginLeft: "10px" }}>X</button>
-                  </div>
+          {/* === CONTENT EDITOR AREA === */}
+          
+          {isHtmlMode ? (
+            <HtmlQuestionEditor 
+              formData={formData}
+              answers={answers}
+              onUpdateForm={setFormData}
+              onUpdateAnswers={setAnswers}
+            />
+          ) : (
+            // STANDARD EDITOR
+            <>
+              <div className="form-group">
+                <label>Nội dung câu hỏi (Text/HTML)</label>
+                <textarea 
+                  className="form-textarea" 
+                  // Removed dark theme styles
+                  style={{ fontFamily: "monospace", fontSize: "0.95rem", height: "100px", color: "#000", background: "#fff" }}
+                  value={formData.content} 
+                  onChange={e => setFormData({...formData, content: e.target.value})} 
+                />
+              </div>
+
+              <div className="form-group">
+                 <label>Giải thích đáp án</label>
+                 <textarea className="form-textarea" value={formData.explanation} onChange={e => setFormData({...formData, explanation: e.target.value})} />
+              </div>
+
+              {(formData.type === "MC_SINGLE" || formData.type === "MC_MULTI") && (
+                <div>
+                  <h3>Các lựa chọn trả lời (Options)</h3>
+                  {answers.map((ans, index) => (
+                    <div key={index} className="box-dashed">
+                      <div className="form-row" style={{ alignItems: 'center' }}>
+                        <input 
+                          type="checkbox" 
+                          style={{ width: "20px", height: "20px", marginRight: "10px" }}
+                          checked={ans.isCorrect} 
+                          onChange={e => handleAnswerChange(index, 'isCorrect', e.target.checked)} 
+                        />
+                        <input 
+                          className="form-input" 
+                          placeholder={`Lựa chọn ${String.fromCharCode(65 + index)}`} 
+                          value={ans.name || ans.content || ""} 
+                          onChange={e => handleAnswerChange(index, 'name', e.target.value)} 
+                        />
+                        <button type="button" onClick={() => handleRemoveOption(index)} className="btn btn-danger" style={{ marginLeft: "10px" }}>X</button>
+                      </div>
+                    </div>
+                  ))}
+                  <button type="button" onClick={handleAddOption} className="btn">+ Thêm lựa chọn</button>
                 </div>
-              ))}
-              <button type="button" onClick={handleAddOption} className="btn">+ Thêm lựa chọn</button>
-            </div>
+              )}
+            </>
           )}
 
           <div className="form-actions-right" style={{ marginTop: "20px" }}>
@@ -209,7 +246,7 @@ const QuestionForm = () => {
         </form>
       </div>
 
-      {/* RIGHT COLUMN: PREVIEW - UPDATED */}
+      {/* RIGHT COLUMN: PREVIEW */}
       <div style={{ flex: 1, minWidth: "300px" }}>
         <div style={{ position: "sticky", top: "20px" }}>
            <h3>Xem trước (Preview)</h3>
@@ -222,9 +259,11 @@ const QuestionForm = () => {
                type: formData.type
              }}
            />
-           <div className="info-box" style={{ marginTop: "15px", fontSize: "0.85rem", color: "#666" }}>
-             ℹ️ Hình ảnh được hiển thị trực tiếp từ mã HTML.
-           </div>
+           {isHtmlMode && (
+             <div className="info-box" style={{ marginTop: "15px", fontSize: "0.85rem", color: "#666" }}>
+               ℹ️ Chế độ HTML Import: Hình ảnh được hiển thị trực tiếp. Bạn có thể thay đổi ảnh bằng cách click vào ảnh trong khung chỉnh sửa bên trái.
+             </div>
+           )}
         </div>
       </div>
     </div>
