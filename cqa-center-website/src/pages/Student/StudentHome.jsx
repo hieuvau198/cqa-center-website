@@ -37,8 +37,8 @@ const StudentHome = () => {
       {/* Header with Logout */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
         <div>
-          <h1 style={{ margin: 0 }}>Student Portal</h1>
-          <p style={{ margin: 0 }}>Select a practice session below to begin.</p>
+          <h1 style={{ margin: 0 }}>CQA Academy - TT Cô Quốc Anh</h1>
+          <p style={{ margin: 0 }}>Ấp 3, Xã Tân lộc, Tỉnh Cà Mau</p>
         </div>
         <button onClick={handleLogout} className="btn btn-danger">Logout</button>
       </div>
@@ -49,12 +49,12 @@ const StudentHome = () => {
             <div className="item-header">
               <h3>{p.testName || "Practice Test"}</h3>
               <button onClick={() => handleAttempt(p)} className="btn btn-primary">
-                Attempt Practice
+                Làm Bài
               </button>
             </div>
             <div style={{ fontSize: '14px', color: '#555' }}>
-              <p><strong>Available:</strong> {new Date(p.startTime).toLocaleString()} - {new Date(p.endTime).toLocaleString()}</p>
-              <p><strong>Code Required:</strong> {p.entryCode ? "Yes" : "No"}</p>
+              <p><strong>Thời gian mở:</strong> {new Date(p.startTime).toLocaleString()} - {new Date(p.endTime).toLocaleString()}</p>
+              <p><strong>Mã truy cập:</strong> {p.entryCode ? "Giáo viên cung cấp" : "Không có"}</p>
             </div>
           </div>
         ))}

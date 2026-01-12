@@ -1,15 +1,13 @@
+// src/pages/Student/Practice/PracticeResult.jsx
 import React from "react";
 import { useNavigate } from "react-router-dom";
 
 const PracticeResult = ({ questions, userAnswers, score, maxScore, onRetry }) => {
   const navigate = useNavigate();
 
-  // Helper to check correctness (Replicates grading logic for UI)
   const checkAnswer = (q) => {
     const uAns = userAnswers[q.id];
     let isCorrect = false;
-    
-    // Normalize options for both standard and HTML types
     const displayOptions = q.answers || q.options || [];
 
     if (q.type === "MC_SINGLE") {
@@ -17,15 +15,9 @@ const PracticeResult = ({ questions, userAnswers, score, maxScore, onRetry }) =>
       isCorrect = correctOpt && uAns === correctOpt.name;
     } 
     else if (q.type === "MC_SINGLE_HTML") {
-      // Logic for HTML questions: 
-      // 1. Find the option marked isCorrect: true
-      // 2. Determine its "value" (id or Label A/B/C) same as Attempt page
-      // 3. Compare with user answer
       const correctOptIndex = displayOptions.findIndex(a => a.isCorrect);
-      
       if (correctOptIndex !== -1) {
         const correctOpt = displayOptions[correctOptIndex];
-        // Must match the value generation logic in PracticeAttempt.jsx
         const correctVal = correctOpt.id || String.fromCharCode(65 + correctOptIndex);
         isCorrect = uAns === correctVal;
       }
@@ -60,7 +52,6 @@ const PracticeResult = ({ questions, userAnswers, score, maxScore, onRetry }) =>
     if (q.type === "MC_SINGLE") return displayOptions.find(a => a.isCorrect)?.name;
     
     if (q.type === "MC_SINGLE_HTML") {
-      // Return the label (A, B...) or content of the correct option
       const idx = displayOptions.findIndex(a => a.isCorrect);
       if (idx !== -1) return displayOptions[idx].id || String.fromCharCode(65 + idx);
       return "";
@@ -81,129 +72,161 @@ const PracticeResult = ({ questions, userAnswers, score, maxScore, onRetry }) =>
     return uAns;
   };
 
+  // Styles
+  const sharpContainer = {
+    background: "#fff", 
+    border: "1px solid #ccc", 
+    marginBottom: "30px",
+    borderRadius: "0"
+  };
+
+  const headerStyle = {
+    padding: "30px",
+    background: "#2c3e50",
+    color: "#fff",
+    textAlign: "center"
+  };
+
   return (
-    <div style={{ maxWidth: "800px", margin: "0 auto", padding: "20px" }}>
-      <div style={{ textAlign: "center", marginBottom: "30px", padding: "20px", background: "#fff", borderRadius: "8px", border: "1px solid #ddd" }}>
-        <h2>Result</h2>
-        <h1 style={{ color: "#2c3e50", fontSize: "3rem", margin: "10px 0" }}>{score} / {maxScore}</h1>
-        <p>You have completed the practice.</p>
-        <button onClick={() => navigate("/student")} className="btn btn-primary">Back to Home</button>
+    <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "40px 20px", fontFamily: "sans-serif" }}>
+      
+      {/* Score Summary Box */}
+      <div style={sharpContainer}>
+        <div style={headerStyle}>
+          <h2 style={{ margin: 0, fontWeight: "300", textTransform: "uppercase", letterSpacing: "2px" }}>Assessment Result</h2>
+          <div style={{ fontSize: "5rem", fontWeight: "bold", margin: "10px 0" }}>
+            {score} <span style={{ fontSize: "2rem", fontWeight: "normal", opacity: 0.7 }}>/ {maxScore}</span>
+          </div>
+          <button 
+            onClick={() => navigate("/student")} 
+            style={{ 
+              marginTop: "10px", 
+              padding: "12px 30px", 
+              background: "transparent", 
+              border: "1px solid #fff", 
+              color: "#fff", 
+              cursor: "pointer", 
+              fontSize: "1rem",
+              textTransform: "uppercase" 
+            }}>
+            Return to Dashboard
+          </button>
+        </div>
       </div>
 
-      <h3>Detailed Review</h3>
-      {questions.map((q, idx) => {
-        const isCorrect = checkAnswer(q);
-        const displayOptions = q.answers || q.options || [];
-        
-        // --- RENDER FOR HTML QUESTIONS ---
-        if (q.type === "MC_SINGLE_HTML") {
+      <h3 style={{ borderBottom: "2px solid #333", paddingBottom: "10px", textTransform: "uppercase", fontSize: "1.2rem", letterSpacing: "1px" }}>Detailed Review</h3>
+      
+      <div style={{ display: "flex", flexDirection: "column", gap: "20px", marginTop: "30px" }}>
+        {questions.map((q, idx) => {
+          const isCorrect = checkAnswer(q);
+          const displayOptions = q.answers || q.options || [];
+          
+          // Border color based on result
+          const statusColor = isCorrect ? "#27ae60" : "#c0392b"; // Green / Red
+
           return (
             <div key={q.id} style={{ 
-              marginBottom: "20px", 
-              padding: "20px", 
-              border: "1px solid", 
-              borderColor: isCorrect ? "#c3e6cb" : "#f5c6cb", 
-              borderRadius: "8px", 
-              background: "#fff",
-              boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
+              ...sharpContainer, 
+              borderLeft: `6px solid ${statusColor}`,
+              padding: "25px" 
             }}>
-              {/* Header */}
-              <div style={{ borderBottom: "1px solid #eee", paddingBottom: "10px", marginBottom: "15px", color: isCorrect ? "#155724" : "#721c24", fontWeight: "bold" }}>
-                {q.name || `Câu ${idx + 1}`} {isCorrect ? "✅" : "❌"}
+              
+              {/* Question Status Header */}
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "15px" }}>
+                <span style={{ fontWeight: "bold", fontSize: "1.1rem", color: "#555" }}>
+                  Question {idx + 1}
+                </span>
+                <span style={{ 
+                  fontWeight: "bold", 
+                  color: statusColor, 
+                  textTransform: "uppercase",
+                  fontSize: "0.9rem",
+                  letterSpacing: "0.5px"
+                }}>
+                  {isCorrect ? "Correct" : "Incorrect"}
+                </span>
               </div>
 
-              {/* Content Body */}
-              <div 
-                dangerouslySetInnerHTML={{ __html: q.content }} 
-                style={{ fontSize: "1.1rem", lineHeight: "1.6", marginBottom: "20px" }}
-              />
+              {/* Render HTML Content if needed */}
+              {q.type === "MC_SINGLE_HTML" ? (
+                <>
+                  <div 
+                    dangerouslySetInnerHTML={{ __html: q.content }} 
+                    style={{ fontSize: "1.1rem", lineHeight: "1.6", marginBottom: "20px", color: "#333" }}
+                  />
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    {displayOptions.map((opt, aIdx) => {
+                      const val = opt.id || String.fromCharCode(65 + aIdx);
+                      const userSelected = userAnswers[q.id] === val;
+                      const isKey = opt.isCorrect === true;
 
-              {/* Options */}
-              <div style={{ marginTop: "10px" }}>
-                {displayOptions.map((opt, aIdx) => {
-                  const val = opt.id || String.fromCharCode(65 + aIdx); // A, B, C...
-                  const userSelected = userAnswers[q.id] === val;
-                  const isKey = opt.isCorrect === true; // Use the boolean field from option
+                      let rowBg = "#fff";
+                      let rowColor = "#333";
+                      let rowBorder = "1px solid #eee";
 
-                  // Determine Styling
-                  let bg = "#fff";
-                  let border = "1px solid #eee";
+                      if (isKey) {
+                        rowBg = "#eafaf1"; // Light Green
+                        rowColor = "#27ae60";
+                        rowBorder = "1px solid #27ae60";
+                      } else if (userSelected && !isKey) {
+                        rowBg = "#fdedec"; // Light Red
+                        rowColor = "#c0392b";
+                        rowBorder = "1px solid #c0392b";
+                      }
+
+                      return (
+                        <div key={aIdx} style={{ 
+                          padding: "12px", 
+                          background: rowBg, 
+                          border: rowBorder, 
+                          display: "flex",
+                          alignItems: "center"
+                        }}>
+                          <strong style={{ minWidth: "30px", color: rowColor }}>{val}.</strong>
+                          <div style={{ flex: 1 }} dangerouslySetInnerHTML={{ __html: opt.content || opt.name || "" }} />
+                          {userSelected && <span style={{ fontSize: "0.8rem", textTransform: "uppercase", marginLeft: "10px", fontWeight: "bold", color: "#555" }}>[Your Answer]</span>}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </>
+              ) : (
+                /* Render Normal Content */
+                <>
+                  <h4 style={{ margin: "0 0 10px 0", fontSize: "1.1rem" }}>{q.name}</h4>
                   
-                  // Highlight Logic:
-                  if (userSelected) {
-                    if (isKey) {
-                        bg = "#d4edda"; 
-                        border = "1px solid #c3e6cb";
-                    } else {
-                        bg = "#f8d7da";
-                        border = "1px solid #f5c6cb";
-                    }
-                  } else if (isKey) {
-                    border = "2px solid #28a745"; // Show correct answer if not selected
-                  }
-
-                  return (
-                    <div key={aIdx} style={{ 
-                      display: "flex", 
-                      padding: "10px", 
-                      margin: "8px 0",
-                      background: bg,
-                      border: border,
-                      borderRadius: "6px",
-                      alignItems: "center"
-                    }}>
-                      <span style={{ fontWeight: "bold", marginRight: "12px", minWidth: "25px", color: "#555" }}>
-                        {val}.
-                      </span>
-                      <div 
-                        style={{ flex: 1 }}
-                        dangerouslySetInnerHTML={{ __html: opt.content || opt.name || "" }}
-                      />
-                      {userSelected && <span style={{ marginLeft: "10px", fontWeight: "bold" }}> (You)</span>}
-                      {isKey && !userSelected && <span style={{ marginLeft: "10px", color: "#28a745" }}>✓</span>}
+                  <div style={{ marginTop: "15px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+                    <div style={{ padding: "15px", background: "#f9f9f9", border: "1px solid #eee" }}>
+                      <div style={{ fontSize: "0.8rem", color: "#777", textTransform: "uppercase", marginBottom: "5px" }}>Your Answer</div>
+                      <div style={{ fontWeight: "bold", color: isCorrect ? "#27ae60" : "#c0392b" }}>
+                        {getUserAnswerDisplay(q)}
+                      </div>
                     </div>
-                  );
-                })}
-              </div>
+                    
+                    {!isCorrect && (
+                      <div style={{ padding: "15px", background: "#f9f9f9", border: "1px solid #eee" }}>
+                        <div style={{ fontSize: "0.8rem", color: "#777", textTransform: "uppercase", marginBottom: "5px" }}>Correct Answer</div>
+                        <div style={{ fontWeight: "bold", color: "#2c3e50" }}>
+                          {getCorrectAnswerDisplay(q)}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
 
-              {/* Explanation */}
+              {/* Explanation (Sharp Box) */}
               {q.explanation && (
-                <div style={{ marginTop: "20px", paddingTop: "15px", borderTop: "1px dashed #ccc", background: "#fffbe6", padding: "15px", borderRadius: "5px" }}>
-                  <strong style={{ color: "#d35400", display: "block", marginBottom: "5px" }}>Explanation:</strong>
-                  <div dangerouslySetInnerHTML={{ __html: q.explanation }} style={{ fontSize: "0.95rem" }} />
+                <div style={{ marginTop: "20px", padding: "15px", background: "#fdfefe", border: "1px solid #dcdcdc", borderLeft: "4px solid #3498db" }}>
+                  <strong style={{ color: "#3498db", textTransform: "uppercase", fontSize: "0.8rem", display: "block", marginBottom: "5px" }}>Explanation</strong>
+                  <div dangerouslySetInnerHTML={{ __html: q.explanation }} style={{ color: "#555" }} />
                 </div>
               )}
+
             </div>
           );
-        }
-
-        // --- RENDER FOR NORMAL QUESTIONS ---
-        return (
-          <div key={q.id} style={{ 
-            marginBottom: "20px", 
-            padding: "15px", 
-            border: "1px solid", 
-            borderColor: isCorrect ? "#c3e6cb" : "#f5c6cb", 
-            borderRadius: "8px", 
-            background: isCorrect ? "#d4edda" : "#f8d7da" 
-          }}>
-            <h4>Q{idx + 1}: {q.name} {isCorrect ? "✅" : "❌"}</h4>
-            
-            <div style={{ margin: "10px 0", background: "rgba(255,255,255,0.6)", padding: "10px", borderRadius: "5px" }}>
-              <p><strong>Your Answer:</strong> {getUserAnswerDisplay(q)}</p>
-              {!isCorrect && (
-                <p style={{ color: "#721c24" }}><strong>Correct Answer:</strong> {getCorrectAnswerDisplay(q)}</p>
-              )}
-            </div>
-
-            {q.explanation && (
-              <div style={{ marginTop: "10px", fontSize: "0.95em", fontStyle: "italic", color: "#444" }}>
-                <strong>Explanation:</strong> {q.explanation}
-              </div>
-            )}
-          </div>
-        );
-      })}
+        })}
+      </div>
     </div>
   );
 };
