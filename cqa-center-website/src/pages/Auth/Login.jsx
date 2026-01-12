@@ -6,7 +6,7 @@ const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
-  const [role, setRole] = useState("STUDENT"); // Default role
+  // Role selection state removed from UI, defaulting effectively to STUDENT for logic
   const navigate = useNavigate();
 
   const handleRedirect = async (user) => {
@@ -30,11 +30,18 @@ const Login = () => {
     e.preventDefault();
     try {
       if (isSignUp) {
-        const user = await registerWithEmail(email, password, role);
+        // Force role to STUDENT for all registrations
+        const user = await registerWithEmail(email, password, "STUDENT");
         alert("Account created successfully!");
         await handleRedirect(user);
       } else {
-        const result = await loginWithEmail(email, password);
+        // Logic to allow 'student01' username to map to the specific email
+        let loginEmail = email;
+        if (email === 'student01') {
+            loginEmail = 'student01@cqa.center';
+        }
+
+        const result = await loginWithEmail(loginEmail, password);
         await handleRedirect(result.user);
       }
     } catch (error) {
@@ -49,8 +56,8 @@ const Login = () => {
       <form onSubmit={handleEmailAuth} className="form-column">
         <input 
           className="form-input" 
-          type="email" 
-          placeholder="Email" 
+          type="text" // Changed from 'email' to 'text' to remove browser validation
+          placeholder="Email or Username" 
           value={email} 
           onChange={(e) => setEmail(e.target.value)} 
           required 
@@ -64,18 +71,7 @@ const Login = () => {
           required 
         />
         
-        {/* Role Selection only visible during Sign Up */}
-        {isSignUp && (
-          <div className="form-group">
-            <label className="form-label">I am a:</label>
-            <select className="form-select" value={role} onChange={(e) => setRole(e.target.value)}>
-              <option value="STUDENT">Student</option>
-              <option value="TEACHER">Teacher</option>
-              {/* Admin usually created manually in DB, but added here for testing */}
-              <option value="ADMIN">Admin</option> 
-            </select>
-          </div>
-        )}
+        {/* Role Selection REMOVED. Users can only register as Student now. */}
 
         <button type="submit" className="btn btn-blue">
           {isSignUp ? "Sign Up" : "Login"}

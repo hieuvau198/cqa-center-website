@@ -1,5 +1,5 @@
 // src/firebase/firebaseQuery.js
-import { db, auth, googleProvider, storage, firebaseConfig } from "./firebase-config"; // Import firebaseConfig
+import { db, auth, googleProvider, storage, firebaseConfig } from "./firebase-config";
 import { initializeApp } from "firebase/app";
 import { collection, getDocs, addDoc, deleteDoc, doc, setDoc, updateDoc, getDoc, query, where } from "firebase/firestore";
 import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, getAuth } from "firebase/auth";
@@ -20,7 +20,6 @@ try {
 //#region STORAGE
 export const uploadFile = async (file, path = "uploads") => {
   try {
-    // Create a unique filename to prevent overwrites
     const uniqueName = `${Date.now()}_${file.name}`;
     const storageRef = ref(storage, `${path}/${uniqueName}`);
     const snapshot = await uploadBytes(storageRef, file);
@@ -32,17 +31,14 @@ export const uploadFile = async (file, path = "uploads") => {
   }
 };
 
-// --- NEW: Function to delete file from storage ---
 export const deleteFile = async (fileUrl) => {
   if (!fileUrl) return;
   try {
-    // Create a reference from the full URL
     const fileRef = ref(storage, fileUrl);
     await deleteObject(fileRef);
     console.log("Deleted file:", fileUrl);
   } catch (error) {
     console.warn("Error deleting file (might not exist):", fileUrl, error);
-    // We do not throw error here to allow the main delete operation to proceed
   }
 };
 //#endregion
@@ -211,11 +207,23 @@ export const updateTest = async (id, data) => {
   }
 };
 
+// UPDATED: Now deletes all child practices before deleting the test
 export const deleteTest = async (id) => {
   try {
+    // 1. Find all practices linked to this test
+    const q = query(practicesRef, where("testId", "==", id));
+    const practiceSnapshot = await getDocs(q);
+
+    // 2. Delete each practice found
+    const deletePromises = practiceSnapshot.docs.map(practiceDoc => 
+      deleteDoc(practiceDoc.ref)
+    );
+    await Promise.all(deletePromises);
+
+    // 3. Delete the test itself
     await deleteDoc(doc(db, "tests", id));
   } catch (error) {
-    console.error("Error deleting test:", error);
+    console.error("Error deleting test and its practices:", error);
     throw error;
   }
 };
@@ -360,29 +368,23 @@ export const getUserById = async (id) => {
 // 3. Create User (Admin Action)
 export const createSystemUser = async (userData) => {
   const { username, password, role, name } = userData;
-  
-  // Construct email: if it has @, use it, else append domain
   const email = username.includes("@") ? username : `${username}${SYSTEM_DOMAIN}`;
 
   try {
-    // Use secondaryAuth to create user so Admin stays logged in
     const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
     const user = userCredential.user;
 
-    // Save detailed info to Firestore (including password as requested)
     await setDoc(doc(db, "users", user.uid), {
       uid: user.uid,
       email: email,
-      username: username, // Store the raw username
+      username: username,
       displayName: name,
       role: role,
-      password: password, // Storing password as requested (Note: Security Risk in Prod)
+      password: password,
       createdAt: new Date().toISOString()
     });
 
-    // Sign out the secondary user immediately so it doesn't interfere
     await signOut(secondaryAuth);
-
     return user;
   } catch (error) {
     console.error("Error creating system user:", error);
@@ -394,8 +396,6 @@ export const createSystemUser = async (userData) => {
 export const updateUser = async (id, data) => {
   try {
     const docRef = doc(db, "users", id);
-    // Note: We can only update Firestore data. 
-    // Changing Auth password for another user is not possible via Client SDK.
     await updateDoc(docRef, data);
   } catch (error) {
     console.error("Error updating user:", error);
@@ -403,7 +403,7 @@ export const updateUser = async (id, data) => {
   }
 };
 
-// 5. Delete User (Firestore only - effectively disables app access if we check db)
+// 5. Delete User
 export const deleteUser = async (id) => {
   try {
     await deleteDoc(doc(db, "users", id));
@@ -412,7 +412,6 @@ export const deleteUser = async (id) => {
     throw error;
   }
 };
-
 //#endregion
 
 //#region AUTHENTICATION
@@ -438,15 +437,12 @@ export const registerWithEmail = async (email, password, role = "STUDENT") => {
 export const loginWithEmail = async (identifier, password) => {
   try {
     let email = identifier;
-    // If input doesn't look like an email, assume it's a username
     if (!identifier.includes("@")) {
       email = `${identifier}${SYSTEM_DOMAIN}`;
     }
     
-    // 1. Perform Auth Login
     const result = await signInWithEmailAndPassword(auth, email, password);
     
-    // 2. Optional: Verify user exists in Firestore (to prevent deleted users from logging in)
     const userDoc = await getDoc(doc(db, "users", result.user.uid));
     if (!userDoc.exists()) {
        await signOut(auth);

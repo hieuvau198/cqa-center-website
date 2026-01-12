@@ -49,6 +49,10 @@ export const parseWordHtml = (htmlString) => {
         rawImages: [] 
       };
       
+      // Remove the "Câu 1:" prefix from the paragraph's DOM
+      // so it doesn't appear in the saved HTML content
+      removeQuestionPrefix(p);
+
       // We start in CONTENT mode
       parsingState = "CONTENT";
     }
@@ -109,6 +113,44 @@ export const parseWordHtml = (htmlString) => {
 
   return questions;
 };
+
+/**
+ * Removes the "Câu 1:" / "Question 1" prefix from the start of a paragraph text nodes.
+ * @param {HTMLElement} p - The paragraph element.
+ */
+function removeQuestionPrefix(p) {
+  // 1. Determine exactly how many characters to strip from the beginning.
+  // Regex includes start anchors and optional punctuation/spaces (e.g., "Câu 1: ")
+  const text = p.textContent;
+  const match = text.match(/^\s*(?:Câu|Question)\s+\d+\s*[:.]?\s*/i);
+
+  if (!match) return;
+
+  let charsToRemove = match[0].length;
+
+  // 2. Traverse text nodes and remove characters until count is reached
+  const traverse = (node) => {
+    if (charsToRemove <= 0) return;
+
+    if (node.nodeType === Node.TEXT_NODE) {
+      const nodeLength = node.textContent.length;
+      if (nodeLength <= charsToRemove) {
+        // Remove entire node text
+        charsToRemove -= nodeLength;
+        node.textContent = "";
+      } else {
+        // Remove partial text
+        node.textContent = node.textContent.substring(charsToRemove);
+        charsToRemove = 0;
+      }
+    } else {
+      // Recurse into children (spans, b, etc.)
+      node.childNodes.forEach(traverse);
+    }
+  };
+
+  traverse(p);
+}
 
 /**
  * Helper to split a paragraph's HTML into options A, B, C, D.
