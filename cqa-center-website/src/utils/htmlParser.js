@@ -15,6 +15,7 @@ export const parseWordHtml = (htmlString) => {
   const questions = [];
   let currentQuestion = null;
   let parsingState = "IDLE"; // IDLE, CONTENT, SOLUTION
+  let questionCount = 0; // <--- ADDED: Counter for questions
 
   paragraphs.forEach((p, index) => {
     // 1. Clean up text for detection (remove &nbsp; etc)
@@ -37,10 +38,13 @@ export const parseWordHtml = (htmlString) => {
         questions.push(currentQuestion);
       }
 
+      // Increment counter for the new question
+      questionCount++; // <--- ADDED: Increment counter
+
       // Start new question
       currentQuestion = {
         id: `temp_${Date.now()}_${index}`,
-        name: `${questionMatch[1]} ${questionMatch[2]}`, // e.g. "Câu 1"
+        name: `Câu ${questionCount}`, // <--- CHANGED: Use counter instead of match[1] + match[2]
         content: "", // HTML string
         options: [], 
         type: "MC_SINGLE_HTML",
