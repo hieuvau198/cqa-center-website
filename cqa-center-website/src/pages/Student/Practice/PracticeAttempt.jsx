@@ -81,6 +81,7 @@ const PracticeAttempt = () => {
     
     questions.forEach(q => {
       const uAns = userAnswers[q.id];
+      const displayOptions = q.answers || q.options || [];
 
       if (q.type === "MC_SINGLE") {
         const correctOpt = q.answers.find(a => a.isCorrect);
@@ -88,9 +89,17 @@ const PracticeAttempt = () => {
 
       } 
       else if (q.type === "MC_SINGLE_HTML") {
-        // Compare user answer (Label A, B, etc.) with correctAnswer field
-        if (q.correctAnswer && uAns && uAns.trim().toUpperCase() === q.correctAnswer.trim().toUpperCase()) {
-          earnedScore += 1;
+        // UPDATED LOGIC: Check isCorrect from options instead of q.correctAnswer string
+        const correctOptIndex = displayOptions.findIndex(a => a.isCorrect);
+        
+        if (correctOptIndex !== -1) {
+          // Determine the expected value (ID or A, B, C...)
+          const correctOpt = displayOptions[correctOptIndex];
+          const correctVal = correctOpt.id || String.fromCharCode(65 + correctOptIndex);
+          
+          if (uAns === correctVal) {
+            earnedScore += 1;
+          }
         }
       }
       else if (q.type === "MC_MULTI") {
