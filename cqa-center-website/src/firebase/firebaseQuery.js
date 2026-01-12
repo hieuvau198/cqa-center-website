@@ -214,11 +214,19 @@ export const deleteTest = async (id) => {
     const q = query(practicesRef, where("testId", "==", id));
     const practiceSnapshot = await getDocs(q);
 
-    // 2. Delete each practice found
-    const deletePromises = practiceSnapshot.docs.map(practiceDoc => 
-      deleteDoc(practiceDoc.ref)
-    );
-    await Promise.all(deletePromises);
+    // 2. Delete each practice found (which effectively triggers practice deletion logic if we were calling the function, but here we do raw delete. 
+    // Ideally, we should also delete attempts for these practices, but for now this cleans up the structure)
+    // To be perfectly clean, we should replicate the logic of deletePractice here or iterate.
+    // For simplicity in this scope:
+    for (const practiceDoc of practiceSnapshot.docs) {
+        // Delete attempts for this practice
+        const attemptsQ = query(attemptsRef, where("practiceId", "==", practiceDoc.id));
+        const attemptsSnap = await getDocs(attemptsQ);
+        await Promise.all(attemptsSnap.docs.map(a => deleteDoc(a.ref)));
+        
+        // Delete the practice
+        await deleteDoc(practiceDoc.ref);
+    }
 
     // 3. Delete the test itself
     await deleteDoc(doc(db, "tests", id));
@@ -294,6 +302,27 @@ export const updatePractice = async (id, practiceData) => {
     await updateDoc(docRef, practiceData);
   } catch (error) {
     console.error("Error updating practice:", error);
+    throw error;
+  }
+};
+
+// UPDATED: Now deletes all attempts linked to the practice before deleting the practice
+export const deletePractice = async (id) => {
+  try {
+    // 1. Find all attempts linked to this practice
+    const q = query(attemptsRef, where("practiceId", "==", id));
+    const attemptSnapshot = await getDocs(q);
+
+    // 2. Delete each attempt found
+    const deletePromises = attemptSnapshot.docs.map(attemptDoc => 
+      deleteDoc(attemptDoc.ref)
+    );
+    await Promise.all(deletePromises);
+
+    // 3. Delete the practice itself
+    await deleteDoc(doc(db, "practices", id));
+  } catch (error) {
+    console.error("Error deleting practice and its attempts:", error);
     throw error;
   }
 };

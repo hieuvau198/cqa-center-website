@@ -5,7 +5,8 @@ import {
   createPractice, 
   getPracticesByTest, 
   getAttemptsByPractice,
-  updatePractice // Import this
+  updatePractice,
+  deletePractice // Import delete function
 } from "../../../firebase/firebaseQuery";
 
 const PracticeManager = () => {
@@ -115,6 +116,48 @@ const PracticeManager = () => {
     window.scrollTo(0, 0);
   };
 
+  // NEW: Delete Handler
+  const handleDelete = async (practiceId, e) => {
+    e.stopPropagation(); // Prevent selecting the card
+    if (window.confirm("Bạn có chắc chắn muốn xóa phiên luyện tập này? Hành động này sẽ xóa cả các lượt làm bài của học viên.")) {
+        try {
+            await deletePractice(practiceId);
+            if (selectedPractice?.id === practiceId) {
+                setSelectedPractice(null);
+            }
+            await refreshPractices();
+            alert("Đã xóa phiên luyện tập và các lượt thi liên quan.");
+        } catch (error) {
+            console.error("Lỗi xóa phiên:", error);
+            alert("Đã xảy ra lỗi khi xóa.");
+        }
+    }
+  };
+
+  // Helper to get local time string for input
+  const getLocalDateTime = (date) => {
+    const d = new Date(date);
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 16);
+  };
+
+  // NEW: Handle creating new with default time
+  const handleCreateNew = () => {
+    if (showForm) {
+        resetForm();
+    } else {
+        const now = new Date();
+        const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000); // Add 24 hours
+        
+        setFormData({
+            entryCode: "",
+            startTime: getLocalDateTime(now),
+            endTime: getLocalDateTime(tomorrow)
+        });
+        setShowForm(true);
+    }
+  };
+
   const resetForm = () => {
     setShowForm(false);
     setIsEditing(false);
@@ -134,10 +177,7 @@ const PracticeManager = () => {
           </button>
           <h2>Quản Lý Luyện Tập: <span className="text-highlight">{testInfo.name}</span></h2>
         </div>
-        <button className="btn btn-primary" onClick={() => { 
-            if(showForm) resetForm(); 
-            else setShowForm(true); 
-        }}>
+        <button className="btn btn-primary" onClick={handleCreateNew}>
           {showForm ? "Hủy Bỏ" : "+ Tạo Phiên Luyện Tập"}
         </button>
       </div>
@@ -195,13 +235,22 @@ const PracticeManager = () => {
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <h4 style={{ margin: "0 0 10px 0" }}>Mã: {p.entryCode}</h4>
-                    <button 
-                        onClick={(e) => startEdit(p, e)}
-                        className="btn btn-sm"
-                        style={{ fontSize: '0.8rem', padding: '2px 8px' }}
-                    >
-                        Sửa
-                    </button>
+                    <div style={{ display: 'flex', gap: '5px' }}>
+                        <button 
+                            onClick={(e) => startEdit(p, e)}
+                            className="btn btn-sm"
+                            style={{ fontSize: '0.8rem', padding: '2px 8px' }}
+                        >
+                            Sửa
+                        </button>
+                        <button 
+                            onClick={(e) => handleDelete(p.id, e)}
+                            className="btn btn-sm btn-danger"
+                            style={{ fontSize: '0.8rem', padding: '2px 8px', background: '#dc3545', color: 'white', border: 'none' }}
+                        >
+                            Xóa
+                        </button>
+                    </div>
                 </div>
                 <p className="card-info-row"><strong>Bắt đầu:</strong> {new Date(p.startTime).toLocaleString('vi-VN')}</p>
                 <p className="card-info-row"><strong>Kết thúc:</strong> {new Date(p.endTime).toLocaleString('vi-VN')}</p>
