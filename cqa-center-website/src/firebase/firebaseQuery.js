@@ -1,11 +1,21 @@
 // src/firebase/firebaseQuery.js
-import { db, auth, googleProvider, storage } from "./firebase-config";
+import { db, auth, googleProvider, storage, firebaseConfig } from "./firebase-config"; // Import firebaseConfig
+import { initializeApp } from "firebase/app";
 import { collection, getDocs, addDoc, deleteDoc, doc, setDoc, updateDoc, getDoc, query, where } from "firebase/firestore";
-import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "firebase/auth";
-import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage"; // <--- Added deleteObject
+import { signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, getAuth } from "firebase/auth";
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 
-// --- FIX: Export these so components can import them from this file ---
 export { db, auth, googleProvider }; 
+
+const SYSTEM_DOMAIN = "@cqa.center";
+
+let secondaryAuth = null;
+try {
+  const secondaryApp = initializeApp(firebaseConfig, "SecondaryApp");
+  secondaryAuth = getAuth(secondaryApp);
+} catch (e) {
+  console.log("Secondary app likely already initialized");
+}
 
 //#region STORAGE
 export const uploadFile = async (file, path = "uploads") => {
@@ -321,6 +331,90 @@ export const deleteTag = async (id) => {
 };
 //#endregion
 
+//#region USER MANAGEMENT (New)
+
+// 1. Get All Users
+export const getAllUsers = async () => {
+  try {
+    const snapshot = await getDocs(usersRef);
+    return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    throw error;
+  }
+};
+
+// 2. Get Single User
+export const getUserById = async (id) => {
+  try {
+    const docRef = doc(db, "users", id);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) return { ...docSnap.data(), id: docSnap.id };
+    return null;
+  } catch (error) {
+    console.error("Error fetching user:", error);
+    throw error;
+  }
+};
+
+// 3. Create User (Admin Action)
+export const createSystemUser = async (userData) => {
+  const { username, password, role, name } = userData;
+  
+  // Construct email: if it has @, use it, else append domain
+  const email = username.includes("@") ? username : `${username}${SYSTEM_DOMAIN}`;
+
+  try {
+    // Use secondaryAuth to create user so Admin stays logged in
+    const userCredential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+    const user = userCredential.user;
+
+    // Save detailed info to Firestore (including password as requested)
+    await setDoc(doc(db, "users", user.uid), {
+      uid: user.uid,
+      email: email,
+      username: username, // Store the raw username
+      displayName: name,
+      role: role,
+      password: password, // Storing password as requested (Note: Security Risk in Prod)
+      createdAt: new Date().toISOString()
+    });
+
+    // Sign out the secondary user immediately so it doesn't interfere
+    await signOut(secondaryAuth);
+
+    return user;
+  } catch (error) {
+    console.error("Error creating system user:", error);
+    throw error;
+  }
+};
+
+// 4. Update User
+export const updateUser = async (id, data) => {
+  try {
+    const docRef = doc(db, "users", id);
+    // Note: We can only update Firestore data. 
+    // Changing Auth password for another user is not possible via Client SDK.
+    await updateDoc(docRef, data);
+  } catch (error) {
+    console.error("Error updating user:", error);
+    throw error;
+  }
+};
+
+// 5. Delete User (Firestore only - effectively disables app access if we check db)
+export const deleteUser = async (id) => {
+  try {
+    await deleteDoc(doc(db, "users", id));
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    throw error;
+  }
+};
+
+//#endregion
+
 //#region AUTHENTICATION
 export const registerWithEmail = async (email, password, role = "STUDENT") => {
   try {
@@ -341,9 +435,25 @@ export const registerWithEmail = async (email, password, role = "STUDENT") => {
   }
 };
 
-export const loginWithEmail = async (email, password) => {
+export const loginWithEmail = async (identifier, password) => {
   try {
-    return await signInWithEmailAndPassword(auth, email, password);
+    let email = identifier;
+    // If input doesn't look like an email, assume it's a username
+    if (!identifier.includes("@")) {
+      email = `${identifier}${SYSTEM_DOMAIN}`;
+    }
+    
+    // 1. Perform Auth Login
+    const result = await signInWithEmailAndPassword(auth, email, password);
+    
+    // 2. Optional: Verify user exists in Firestore (to prevent deleted users from logging in)
+    const userDoc = await getDoc(doc(db, "users", result.user.uid));
+    if (!userDoc.exists()) {
+       await signOut(auth);
+       throw new Error("Tài khoản này đã bị vô hiệu hóa hoặc không tồn tại.");
+    }
+
+    return result;
   } catch (error) {
     console.error("Error logging in:", error);
     throw error;

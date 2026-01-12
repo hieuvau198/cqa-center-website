@@ -43,7 +43,7 @@ export const parseWordHtml = (htmlString) => {
         name: `${questionMatch[1]} ${questionMatch[2]}`, // e.g. "Câu 1"
         content: "", // HTML string
         options: [], 
-        type: "MC_SINGLE",
+        type: "MC_SINGLE_HTML",
         correctAnswer: "",
         explanation: "",
         rawImages: [] 

@@ -1,7 +1,8 @@
+// src/pages/Student/Practice/PracticeAttempt.jsx
 import { useEffect, useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getPracticeById, getTestById, getQuestionsByIds, saveAttempt, auth } from "../../../firebase/firebaseQuery";
-import PracticeResult from "./PracticeResult"; // Import the new Result component
+import PracticeResult from "./PracticeResult";
 
 const PracticeAttempt = () => {
   const { practiceId } = useParams();
@@ -85,7 +86,14 @@ const PracticeAttempt = () => {
         const correctOpt = q.answers.find(a => a.isCorrect);
         if (correctOpt && uAns === correctOpt.name) earnedScore += 1;
 
-      } else if (q.type === "MC_MULTI") {
+      } 
+      else if (q.type === "MC_SINGLE_HTML") {
+        // Compare user answer (Label A, B, etc.) with correctAnswer field
+        if (q.correctAnswer && uAns && uAns.trim().toUpperCase() === q.correctAnswer.trim().toUpperCase()) {
+          earnedScore += 1;
+        }
+      }
+      else if (q.type === "MC_MULTI") {
         const correctNames = q.answers.filter(a => a.isCorrect).map(a => a.name);
         const userSelection = uAns || [];
         const isCorrect = correctNames.length === userSelection.length && 
@@ -142,8 +150,7 @@ const PracticeAttempt = () => {
     );
   }
 
-  // OTHERWISE SHOW ATTEMPT FORM
-  return (
+return (
     <div style={{ maxWidth: "800px", margin: "0 auto", padding: "20px" }}>
       <h2>{test.name}</h2>
       <p>{test.description}</p>
@@ -166,14 +173,74 @@ const PracticeAttempt = () => {
   );
 };
 
-// --- Question Item Component (Same as before, ensures matching options shuffle locally) ---
+// --- Updated QuestionItem to handle MC_SINGLE_HTML ---
 const QuestionItem = ({ q, idx, userAnswer, onAnswerChange }) => {
+  // Normalize options: Import uses 'options', Manual uses 'answers'
+  const displayOptions = q.answers || q.options || [];
+
   const matchingOptions = useMemo(() => {
     if (q.type !== "MATCHING") return [];
-    const opts = q.answers.map(a => a.description);
+    const opts = displayOptions.map(a => a.description);
     return opts.sort(() => Math.random() - 0.5);
-  }, [q]);
+  }, [q, displayOptions]);
 
+  // 1. Render for HTML Questions (Like Preview)
+  if (q.type === "MC_SINGLE_HTML") {
+    return (
+      <div style={{ marginBottom: "20px", padding: "20px", border: "1px solid #ddd", borderRadius: "8px", background: "white", boxShadow: "0 2px 4px rgba(0,0,0,0.05)" }}>
+        {/* Header */}
+        <div style={{ borderBottom: "1px solid #eee", paddingBottom: "10px", marginBottom: "15px", color: "#555", fontWeight: "bold" }}>
+          {q.name || `Câu ${idx + 1}`}
+        </div>
+
+        {/* HTML Content Body */}
+        <div 
+          className="question-html-body"
+          dangerouslySetInnerHTML={{ __html: q.content }} 
+          style={{ fontSize: "1.1rem", lineHeight: "1.6", marginBottom: "20px" }}
+        />
+
+        {/* HTML Options */}
+        <div style={{ marginTop: "10px" }}>
+          {displayOptions.map((opt, aIdx) => {
+            const val = opt.id || String.fromCharCode(65 + aIdx); // A, B, C...
+            const isSelected = userAnswer === val;
+            
+            return (
+              <div key={aIdx} style={{ 
+                margin: "8px 0",
+                border: isSelected ? "1px solid #2196F3" : "1px solid #eee",
+                borderRadius: "6px",
+                background: isSelected ? "#e3f2fd" : "#fff",
+                transition: "all 0.2s"
+              }}>
+                <label style={{ cursor: "pointer", display: "flex", padding: "12px", alignItems: "center" }}>
+                  <input 
+                    type="radio" 
+                    name={`q-${q.id}`} 
+                    value={val} 
+                    checked={isSelected} 
+                    onChange={() => onAnswerChange(q.id, val, "MC_SINGLE_HTML")} 
+                  />
+                  {/* Label (A.) */}
+                  <span style={{ fontWeight: "bold", marginLeft: "12px", marginRight: "8px", color: "#555" }}>
+                    {val}.
+                  </span>
+                  {/* Option Content (HTML) */}
+                  <div 
+                    style={{ flex: 1 }}
+                    dangerouslySetInnerHTML={{ __html: opt.content || opt.name || "" }}
+                  />
+                </label>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // 2. Render for Normal Questions (Existing Logic)
   return (
     <div style={{ marginBottom: "20px", padding: "15px", border: "1px solid #ddd", borderRadius: "8px", background: "white" }}>
       <h4>Q{idx + 1}: {q.name}</h4>
@@ -182,7 +249,7 @@ const QuestionItem = ({ q, idx, userAnswer, onAnswerChange }) => {
       {q.imageUrl && <img src={q.imageUrl} alt="Question" style={{maxWidth: "100%", maxHeight: "200px", marginBottom: "15px"}} />}
 
       <div style={{ marginTop: "10px" }}>
-        {q.type === "MC_SINGLE" && q.answers.map((ans, aIdx) => (
+        {q.type === "MC_SINGLE" && displayOptions.map((ans, aIdx) => (
           <div key={aIdx} style={{ margin: "8px 0" }}>
             <label style={{ cursor: "pointer", display: "flex", alignItems: "center" }}>
               <input type="radio" name={`q-${q.id}`} value={ans.name} checked={userAnswer === ans.name} onChange={() => onAnswerChange(q.id, ans.name, "MC_SINGLE")} />
@@ -191,7 +258,7 @@ const QuestionItem = ({ q, idx, userAnswer, onAnswerChange }) => {
           </div>
         ))}
 
-        {q.type === "MC_MULTI" && q.answers.map((ans, aIdx) => (
+        {q.type === "MC_MULTI" && displayOptions.map((ans, aIdx) => (
           <div key={aIdx} style={{ margin: "8px 0" }}>
             <label style={{ cursor: "pointer", display: "flex", alignItems: "center" }}>
               <input type="checkbox" name={`q-${q.id}`} value={ans.name} checked={userAnswer?.includes(ans.name) || false} onChange={() => onAnswerChange(q.id, ans.name, "MC_MULTI")} />
@@ -208,7 +275,7 @@ const QuestionItem = ({ q, idx, userAnswer, onAnswerChange }) => {
 
         {q.type === "MATCHING" && (
           <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            {q.answers.map((pair, pIdx) => (
+            {displayOptions.map((pair, pIdx) => (
               <div key={pIdx} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "15px", padding: "10px", background: "#f9f9f9", borderRadius: "5px" }}>
                 <span style={{ fontWeight: "500", flex: 1 }}>{pair.name}</span>
                 <span style={{ fontSize: "20px" }}>→</span>

@@ -17,6 +17,8 @@ import PracticeManager from "./pages/Admin/Practices/PracticeManager";
 import AdminProfile from "./pages/Admin/Profile/AdminProfile";   
 import PoolList from "./pages/Admin/Questions/PoolList";
 import ImportQuestions from "./pages/Admin/Questions/ImportQuestions";
+import UserList from './pages/Admin/Users/UserList';
+import UserForm from './pages/Admin/Users/UserForm';
 
 // Student Pages
 import StudentHome from "./pages/Student/StudentHome";
@@ -46,6 +48,9 @@ function App() {
           <Route path="tests/new" element={<TestForm />} />
           <Route path="tests/edit/:id" element={<TestForm />} /> 
           <Route path="practices/:testId" element={<PracticeManager />} />
+          <Route path="users" element={<UserList />} />
+          <Route path="users/new" element={<UserForm />} />
+          <Route path="users/edit/:id" element={<UserForm />} />
           <Route path="profile" element={<AdminProfile />} />
         </Route>
 
