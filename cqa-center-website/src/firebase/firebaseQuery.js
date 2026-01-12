@@ -159,6 +159,87 @@ export const getQuestionById = async (id) => {
     throw error;
   }
 };
+
+const extractImageUrls = (htmlContent) => {
+  if (!htmlContent) return [];
+  const regex = /src=["']([^"']+)["']/g;
+  const urls = [];
+  let match;
+  while ((match = regex.exec(htmlContent)) !== null) {
+    urls.push(match[1]);
+  }
+  return urls;
+};
+
+/**
+ * NEW: Delete a test AND all its associated questions and images.
+ * This is a "Deep Delete" operation.
+ */
+export const deleteTestWithQuestions = async (testId) => {
+  try {
+    // 1. Get the test to find the list of Question IDs
+    const test = await getTestById(testId);
+    if (!test) throw new Error("Test not found");
+
+    // Retrieve IDs from 'questionIds' (standard) or legacy 'questions' field
+    let idsToDelete = [];
+    if (test.questionIds && Array.isArray(test.questionIds)) {
+      idsToDelete = [...test.questionIds];
+    } else if (test.questions && Array.isArray(test.questions)) {
+      idsToDelete = test.questions.map(q => (typeof q === 'object' ? q.id : q));
+    }
+    
+    // Remove duplicates
+    idsToDelete = [...new Set(idsToDelete)];
+
+    // 2. Iterate through each question to delete Images + Document
+    // We use Promise.all to process them (or use a for...of loop if sequential is safer for rate limits)
+    const deletePromises = idsToDelete.map(async (qId) => {
+       const question = await getQuestionById(qId);
+       if (!question) return;
+
+       const imagesToDelete = new Set();
+       
+       // A. Collect Main Image
+       if (question.imageUrl) imagesToDelete.add(question.imageUrl);
+       
+       // B. Collect Images from Content & Explanation HTML
+       extractImageUrls(question.content).forEach(url => imagesToDelete.add(url));
+       extractImageUrls(question.explanation).forEach(url => imagesToDelete.add(url));
+       
+       // C. Collect Images from Answers
+       if (question.answers && Array.isArray(question.answers)) {
+          question.answers.forEach(ans => {
+             if (ans.imageUrl) imagesToDelete.add(ans.imageUrl);
+             extractImageUrls(ans.content).forEach(url => imagesToDelete.add(url));
+          });
+       }
+
+       // D. Execute Image Deletion (Only delete files hosted in our Firebase Storage)
+       const imageDeletePromises = Array.from(imagesToDelete).map(url => {
+          if (url && url.includes("firebasestorage")) {
+             return deleteFile(url);
+          }
+          return Promise.resolve();
+       });
+       await Promise.all(imageDeletePromises);
+
+       // E. Delete the Question Document
+       await deleteQuestion(qId);
+    });
+
+    await Promise.all(deletePromises);
+
+    // 3. Finally, call the standard deleteTest to remove the Test doc, Practices, and Attempts
+    await deleteTest(testId);
+
+    console.log(`Deep delete completed for test ${testId}`);
+
+  } catch (error) {
+    console.error("Error in deleteTestWithQuestions:", error);
+    throw error;
+  }
+};
 //#endregion
 
 //#region TESTs
@@ -559,3 +640,4 @@ export const getAttemptsByUser = async (userId) => {
   }
 };
 //#endregion
+

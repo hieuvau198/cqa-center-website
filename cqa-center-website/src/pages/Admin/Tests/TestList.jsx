@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { getAllTests, deleteTest } from "../../../firebase/firebaseQuery";
+// Update import to include deleteTestWithQuestions
+import { getAllTests, deleteTest, deleteTestWithQuestions } from "../../../firebase/firebaseQuery";
 
 const TestList = () => {
   const [tests, setTests] = useState([]);
@@ -15,9 +16,30 @@ const TestList = () => {
   }, []);
 
   const handleDelete = async (id) => {
-    if(confirm("Bạn có chắc chắn muốn xóa bài kiểm tra này không?")) {
-      await deleteTest(id);
+    // 1. Standard Confirmation
+    if (!confirm("Bạn có chắc chắn muốn xóa bài kiểm tra này không?")) {
+      return;
+    }
+
+    // 2. Advanced Confirmation (Deep Delete vs Standard Delete)
+    const shouldDeleteSource = confirm(
+      "Bạn có muốn xóa vĩnh viễn CÂU HỎI và HÌNH ẢNH đi kèm không?\n\n" +
+      "OK: Xóa HẾT (Bài thi + Câu hỏi + Hình ảnh)\n" +
+      "Cancel: Chỉ xóa Bài thi (Giữ lại câu hỏi trong kho)"
+    );
+
+    try {
+      if (shouldDeleteSource) {
+        // Delete everything
+        await deleteTestWithQuestions(id);
+      } else {
+        // Standard delete (Test + Practices + Attempts only)
+        await deleteTest(id);
+      }
+      // Update UI
       setTests(tests.filter(t => t.id !== id));
+    } catch (error) {
+      alert("Có lỗi xảy ra khi xóa: " + error.message);
     }
   };
 
