@@ -141,7 +141,66 @@ export const updateQuestion = async (id, data) => {
 
 export const deleteQuestion = async (id) => {
   try {
+    // 1. Delete the question document from 'questions' collection
     await deleteDoc(doc(db, "questions", id));
+
+    // 2. Remove the question from all tests that use it
+    // Fetch all tests
+    const testsSnapshot = await getDocs(collection(db, "tests"));
+    
+    const updatePromises = [];
+
+    testsSnapshot.forEach((testDoc) => {
+      const testData = testDoc.data();
+      let isModified = false;
+      
+      // Handle tests with a 'sections' structure (common in this app)
+      let newSections = testData.sections;
+      if (testData.sections && Array.isArray(testData.sections)) {
+        newSections = testData.sections.map((section) => {
+          if (section.questions && Array.isArray(section.questions)) {
+            // Filter out the question. Handle both ID strings and Objects with an ID.
+            const originalLength = section.questions.length;
+            const newQuestions = section.questions.filter((q) => {
+              const qId = typeof q === 'object' ? q.id : q;
+              return qId !== id;
+            });
+
+            if (newQuestions.length !== originalLength) {
+              isModified = true;
+              return { ...section, questions: newQuestions };
+            }
+          }
+          return section;
+        });
+      }
+
+      // Handle tests with a simple 'questions' array (if any)
+      let newQuestions = testData.questions;
+      if (testData.questions && Array.isArray(testData.questions)) {
+        const originalLength = testData.questions.length;
+        newQuestions = testData.questions.filter((q) => {
+           const qId = typeof q === 'object' ? q.id : q;
+           return qId !== id;
+        });
+        if (newQuestions.length !== originalLength) {
+          isModified = true;
+        }
+      }
+
+      // If the test was modified, queue an update
+      if (isModified) {
+        updatePromises.push(updateDoc(doc(db, "tests", testDoc.id), {
+          sections: newSections || [],
+          questions: newQuestions || []
+        }));
+      }
+    });
+
+    // Execute all test updates
+    await Promise.all(updatePromises);
+    return true;
+
   } catch (error) {
     console.error("Error deleting question:", error);
     throw error;

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 // Ensure deleteFile and uploadFile are imported
-import { addQuestion, updateQuestion, getQuestionById, getAllTags, getAllPools, uploadFile, deleteFile } from "../../../firebase/firebaseQuery";
+import { addQuestion, updateQuestion, getQuestionById, getAllTags, getAllPools, uploadFile, deleteFile, deleteQuestion } from "../../../firebase/firebaseQuery";
 import QuestionPreview from "../../../components/QuestionPreview";
 import HtmlQuestionEditor from "./components/HtmlQuestionEditor";
 import TagTreeSelector from "../Tests/components/TagTreeSelector"; // Import hierarchical selector
@@ -29,7 +29,6 @@ const QuestionForm = () => {
     { name: "", description: "", imageUrl: "", isCorrect: false }
   ]);
 
-  // --- NEW: State to track pending image operations ---
   const [pendingUploads, setPendingUploads] = useState([]); // Array of { tempUrl, file }
   const [pendingDeletes, setPendingDeletes] = useState(new Set()); // Set of URLs
   const [isSaving, setIsSaving] = useState(false);
@@ -61,7 +60,6 @@ const QuestionForm = () => {
     init();
   }, [id, isEditMode]);
 
-  // --- NEW: Handler passed to HtmlQuestionEditor ---
   const handleImageReplace = (file, oldSrc, tempUrl) => {
     // 1. Manage Upload Queue
     setPendingUploads(prev => {
@@ -111,6 +109,29 @@ const QuestionForm = () => {
     const newAnswers = [...answers];
     newAnswers[index][field] = value;
     setAnswers(newAnswers);
+  };
+
+  const handleDelete = async () => {
+  if (!window.confirm("Are you sure you want to delete this question? This action cannot be undone and will remove the question from all tests.")) {
+    return;
+  }
+
+    try {
+      // Optional: Delete the associated image file if it exists
+      if (questionData.fileUrl) {
+        try {
+          await deleteFile(questionData.fileUrl);
+        } catch (fileError) {
+          console.warn("Could not delete associated file:", fileError);
+        }
+      }
+
+      await deleteQuestion(id);
+      navigate("/admin/questions"); // Redirect to list after delete
+    } catch (error) {
+      console.error("Error deleting question:", error);
+      alert("Failed to delete question. Please try again.");
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -299,6 +320,30 @@ const QuestionForm = () => {
             <button type="submit" className="btn btn-primary" style={{ padding: "10px 30px" }} disabled={isSaving}>
               {isSaving ? "Đang xử lý ảnh & Lưu..." : (isEditMode ? "Lưu Thay Đổi" : "Tạo Câu Hỏi")}
             </button>
+            {id && (
+    <button
+      type="button"
+      onClick={handleDelete}
+      className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition-colors"
+    >
+      Delete Question
+    </button>
+  )}
+
+  {/* Existing Save/Cancel buttons */}
+  <button
+    type="button"
+    onClick={() => navigate("/admin/questions")}
+    className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600 transition-colors"
+  >
+    Cancel
+  </button>
+  <button
+    onClick={handleSave}
+    className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+  >
+    {id ? "Update Question" : "Create Question"}
+  </button>
           </div>
         </form>
       </div>
